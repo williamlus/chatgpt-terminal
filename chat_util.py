@@ -17,7 +17,7 @@ from pygments.formatters import Terminal256Formatter
 import threading
 
 is_insert_mode=False
-response_completed=False
+response_completed=""
 start_time=None
 
 def log_msg(role:str, msg:str, role_color:str="blue", msg_color:str="reset"):
@@ -199,15 +199,12 @@ def setup():
 
 def setup_theme():
     colorama.init()
-
-def ask_question(ques:list):
-    global response_completed, start_time
-    response_completed, start_time=False, time.time()
     
+def start_bar_clock() -> threading.Thread:
     def rotating_bar():
         global response_completed, start_time
         bar_chars="/-\\|"
-        while not response_completed:
+        while response_completed=='started':
             time_passed=round(time.time()-start_time, 1)
             msg=f"Waiting for response {bar_chars[int(time_passed/0.2)%4]} ({time_passed}s)"
             sys.stdout.write(colorama.Fore.LIGHTBLACK_EX+msg)
@@ -215,63 +212,78 @@ def ask_question(ques:list):
             time.sleep(0.1)
             sys.stdout.write('\b'*len(msg))
             sys.stdout.flush()
+            # if int(time_passed*10)%50==0: print(colorama.Fore.LIGHTBLACK_EX+f"stuck in while loop {response_completed}".ljust(len(msg)), flush=True)
         time_passed=round(time.time()-start_time, 1)
-        print(colorama.Fore.LIGHTBLACK_EX+f"Response finished ({time_passed}s)".ljust(len(msg)), flush=True)
-        
+        if response_completed=='finished':
+            print(colorama.Fore.LIGHTBLACK_EX+f"Response finished ({time_passed}s)".ljust(len(msg)), flush=True)
     bar_thread=threading.Thread(target=rotating_bar)
     bar_thread.start()
+    return bar_thread
+
+def ask_question(ques:list):
+    global response_completed, start_time
+    response_completed, start_time="started", time.time()
+    bar_thread=start_bar_clock()
     try:
         completion=openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=ques)
-    except KeyboardInterrupt as e:
-        response_completed=True
+        response_completed="finished"
+    except Exception as e:
+        response_completed="failed"
         bar_thread.join()
-        sys.exit(0)
-    else:
-        response_completed=True
-        bar_thread.join()
+        raise e
+    bar_thread.join()
     return completion
 
-def start_chat(customize_system: bool):
-    msg_arr=[]
-    system_msg="You are a helpful assistant."
-    print(f"Default system prompt: {system_msg}")
-    if customize_system: 
-        system_msg=input("Enter a new system prompt: ")
-        print(f"System prompt set to: {system_msg}")
-    msg_arr.append({"role": "system", "content": system_msg})
+
+def cut_msg_arr(msg_arr:list, max_len:int):
+    sys_msg=msg_arr[0]
+    msg_arr_left=[sys_msg]
+    total_len=len(str(sys_msg).split())
+    for i in range(-1, -len(msg_arr), -1):
+        total_len+=len(str(msg_arr[i]).split())
+        if total_len>max_len: break
+        msg_arr_left.insert(1, msg_arr[i])
+    return msg_arr_left
+
+def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
+    if len(msg_arr_whole)==0: # start a new chat
+        system_msg="You are a helpful assistant."
+        print(f"Default system prompt: {system_msg}")
+        if customize_system: 
+            system_msg=input("Enter a new system prompt: ")
+            print(f"System prompt set to: {system_msg}")
+        msg_arr.append({"role": "system", "content": system_msg})
+        msg_arr_whole.append({"role": "system", "content": system_msg})
+        
     input_text=""
     while(input_text.lower()!="q"):
-        input_text=get_question()
-        if input_text.lower()=="q": break
-        msg_arr.append({"role": "user", "content": input_text})
+        if msg_arr[-1]['role']!="user":
+            input_text=get_question()
+            if input_text.lower()=="q": break
+            msg_arr.append({"role": "user", "content": input_text})
+            msg_arr_whole.append({"role": "user", "content": input_text})
+        
         try: completion=ask_question(msg_arr)
         except Exception as e:
-            print(e, flush=True) 
-            msg_arr.pop()
+            if ("reduce the length of the messages" in str(e)):
+                print('Max length of messages reached. Remove the earliest dialog.')
+                if len(msg_arr)>=2:
+                    msg_arr.pop(1)
+            elif ("Rate limit reached for" in str(e)): time.sleep(1)
+            else: print(e)
             continue
+        
         resp=completion.choices[0].message.content
         msg_arr.append({"role": "assistant", "content": resp})
+        msg_arr_whole.append({"role": "assistant", "content": resp})
         log_msg("assistant", resp)
-    return msg_arr
+    return msg_arr_whole
 
-def resume_chat(msg_arr: list):
-    print_msg_arr(msg_arr)
-    input_text=""
-    while(input_text.lower()!="q"):
-        input_text=get_question()
-        if input_text.lower()=="q": break
-        msg_arr.append({"role": "user", "content": input_text})
-        while(True):
-            try:
-                completion=ask_question(msg_arr)
-                break
-            except:
-                time.sleep(1)
-                continue  
-        resp=completion.choices[0].message.content
-        msg_arr.append({"role": "assistant", "content": resp})
-        log_msg("assistant", resp)
-    return msg_arr
+def resume_chat(msg_arr_whole: list):
+    print_msg_arr(msg_arr_whole)
+    msg_arr=cut_msg_arr(msg_arr_whole, 4096)
+    msg_arr_whole=start_chat(customize_system=False, msg_arr=msg_arr, msg_arr_whole=msg_arr_whole)
+    return msg_arr_whole
 
 def ask_path(op: str="save"):
     # create a Tkinter root window
