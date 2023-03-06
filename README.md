@@ -1,4 +1,4 @@
-# Chatgpt Terminal
+# ChatGPT Terminal
 Interactive ChatGPT terminal implemented in Python.
 
 ## Setup:
