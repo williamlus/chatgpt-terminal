@@ -11,6 +11,7 @@ Interactive ChatGPT terminal implemented in Python.
 ### For Windows users:
 Run `chat.bat` to start a new chat, or `chatr.bat` to resume a chat.
 ### For Linux/MacOS users:
+1. Run `chmod +x chat.sh` and `chmod +x chatr.sh`.
 Run `./chat.sh` to start a new chat, or `./chatr.sh` to resume a chat.
 
 ## Useful Shortcuts:
