@@ -136,17 +136,17 @@ def get_key_bindings():
             try: buffer.cursor_position -= 1
             except Exception as e: pass
     
-    @Condition
-    def not_edit_mode(): return not is_insert_mode
+    globals()['is_insert_mode'] = False
     
-    @bindings.add(Keys.Insert, filter=not_edit_mode)
+    @bindings.add(Keys.Insert)
     def _(event: KeyPressEvent): globals()['is_insert_mode'] = True
     
-    @Condition
-    def is_edit_mode(): return is_insert_mode
-    
-    @ bindings.add('escape', filter=is_edit_mode)
+    @ bindings.add('escape')
     def _(event: KeyPressEvent): globals()['is_insert_mode'] = False
+    
+    @Condition
+    def is_edit_mode() -> bool:
+        return globals()['is_insert_mode']
     
     @ bindings.add(Keys.Enter, filter=is_edit_mode)
     def _(event: KeyPressEvent):
@@ -161,7 +161,7 @@ def get_question():
     })
     history = FileHistory(".history.txt") # This will create a history file to store your past inputs
     input_text = ""
-    while (input_text==""):
+    while (input_text.strip()==""):
         input_text = prompt("Enter your message (or q to quit): ", style=custom_style, history=history, key_bindings=get_key_bindings())
     return input_text
 
@@ -216,9 +216,15 @@ def ask_question(ques:list):
         
     bar_thread=threading.Thread(target=rotating_bar)
     bar_thread.start()
-    completion=openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=ques)
-    response_completed=True
-    bar_thread.join()
+    try:
+        completion=openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=ques)
+    except KeyboardInterrupt as e:
+        response_completed=True
+        bar_thread.join()
+        exit()
+    else:
+        response_completed=True
+        bar_thread.join()
     return completion
 
 def start_chat(customize_system: bool):
