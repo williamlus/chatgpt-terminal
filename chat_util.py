@@ -176,7 +176,10 @@ def test_api_key(api_key:str) -> bool:
         openai.api_key = api_key
         openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=[{"role": "user", "content": "Hello"}])
         return True
-    except: return False
+    except Exception as e:
+        if "No API key provided" in str(e) or "Incorrect API key provided" in str(e):
+            return False
+        else: return True
 
 def setup():
     openai.organization = "org-ggL1uiODdaNr1nCveaaGixyP"
