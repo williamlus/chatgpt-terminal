@@ -163,7 +163,9 @@ def get_question():
 def setup():
     openai.organization = "org-ggL1uiODdaNr1nCveaaGixyP"
     try:
-        openai.api_key = os.getenv("OPENAI_API_KEY")
+        api_key=os.getenv("OPENAI_API_KEY")
+        assert(api_key!=None)
+        openai.api_key = api_key
     except:
         print("Please set the environment variable OPENAI_API_KEY to your OpenAI API key to automatically authenticate requests.")
         api_key=input("Enter your OpenAI API key (or q to quit):")
