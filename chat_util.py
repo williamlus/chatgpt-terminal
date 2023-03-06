@@ -160,22 +160,40 @@ def get_question():
         input_text = prompt("Enter your message (or q to quit): ", style=custom_style, history=history, key_bindings=get_key_bindings())
     return input_text
 
+def get_api_key():
+    api_key=os.getenv("OPENAI_API_KEY")
+    if api_key==None:
+        try:
+            with open("api_key.txt", "r") as f:
+                api_key=f.read()
+        except: pass
+    return api_key
+
 def setup():
     openai.organization = "org-ggL1uiODdaNr1nCveaaGixyP"
     try:
-        api_key=os.getenv("OPENAI_API_KEY")
+        api_key=get_api_key()
         assert(api_key!=None)
         openai.api_key = api_key
     except:
         print("Please set the environment variable OPENAI_API_KEY to your OpenAI API key to automatically authenticate requests.")
-        api_key=input("Enter your OpenAI API key (or q to quit):")
-        if api_key.lower()=="q": exit()
-        else: openai.api_key = api_key
+        while(True):
+            api_key=input("Enter your OpenAI API key (or q to quit):")
+            if api_key.lower()=="q": exit()
+            else: 
+                openai.api_key = api_key
+                try:
+                    openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=[{"role": "user", "content": "Hello"}])
+                    with open("api_key.txt", "w") as f:
+                        f.write(api_key)
+                    break
+                except:
+                    print("Invalid API key.")
 
 def setup_theme():
     colorama.init()
 
-def ask_question(ques:str):
+def ask_question(ques:list):
     global response_completed, start_time
     response_completed, start_time=False, time.time()
     
