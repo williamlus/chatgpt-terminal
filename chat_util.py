@@ -162,7 +162,11 @@ def get_question():
     history = FileHistory(".history.txt") # This will create a history file to store your past inputs
     input_text = ""
     while (input_text.strip()==""):
-        input_text = prompt("Enter your message (or q to quit): ", style=custom_style, history=history, key_bindings=get_key_bindings())
+        try:
+            input_text = prompt("Enter your message (or q to quit): ", style=custom_style, history=history, key_bindings=get_key_bindings())
+        except KeyboardInterrupt:
+            print("Exiting...")
+            sys.exit(0)
     return input_text
 
 def test_api_key(api_key:str) -> bool:
@@ -221,7 +225,7 @@ def ask_question(ques:list):
     except KeyboardInterrupt as e:
         response_completed=True
         bar_thread.join()
-        exit()
+        sys.exit(0)
     else:
         response_completed=True
         bar_thread.join()
