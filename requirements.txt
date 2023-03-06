@@ -1,0 +1,7 @@
+openai
+tk
+prompt_toolkit
+colorama
+alive-progress
+pyperclip
+pygments
