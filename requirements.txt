@@ -5,3 +5,4 @@ colorama
 alive-progress
 pyperclip
 pygments
+regex

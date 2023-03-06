@@ -1,5 +1,6 @@
 import sys
 import pyperclip
+import re
 import openai, os, time, random, colorama
 import tkinter as tk
 from tkinter import filedialog
@@ -212,7 +213,6 @@ def start_bar_clock() -> threading.Thread:
             time.sleep(0.1)
             sys.stdout.write('\b'*len(msg))
             sys.stdout.flush()
-            # if int(time_passed*10)%50==0: print(colorama.Fore.LIGHTBLACK_EX+f"stuck in while loop {response_completed}".ljust(len(msg)), flush=True)
         time_passed=round(time.time()-start_time, 1)
         if response_completed=='finished':
             print(colorama.Fore.LIGHTBLACK_EX+f"Response finished ({time_passed}s)".ljust(len(msg)), flush=True)
@@ -240,9 +240,13 @@ def cut_msg_arr(msg_arr:list, max_len:int):
     msg_arr_left=[sys_msg]
     total_len=len(str(sys_msg).split())
     for i in range(-1, -len(msg_arr), -1):
-        total_len+=len(str(msg_arr[i]).split())
+        curr_msg=str(msg_arr[i])
+        processed_msg = re.sub(r'[^\w\s]', ' ', curr_msg)
+        non_alnum_count = len(re.findall(r"[^\w\s]", curr_msg))
+        total_len+=len(processed_msg.split())+non_alnum_count//16
         if total_len>max_len: break
         msg_arr_left.insert(1, msg_arr[i])
+    print(f"Cutting {len(msg_arr)-len(msg_arr_left)} from {len(msg_arr)} messages.")
     return msg_arr_left
 
 def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
@@ -266,9 +270,11 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
         try: completion=ask_question(msg_arr)
         except Exception as e:
             if ("reduce the length of the messages" in str(e)):
-                print('Max length of messages reached. Remove the earliest dialog.')
-                if len(msg_arr)>=2:
+                msg_arr_left=cut_msg_arr(msg_arr, 4096)
+                if len(msg_arr)>=2 and len(msg_arr_left)==len(msg_arr):
                     msg_arr.pop(1)
+                else: msg_arr=msg_arr_left
+                print(f'Max length of messages reached. Remove the earliest dialog.')
             elif ("Rate limit reached for" in str(e)): time.sleep(1)
             else: print(e)
             continue
@@ -281,7 +287,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
 
 def resume_chat(msg_arr_whole: list):
     print_msg_arr(msg_arr_whole)
-    msg_arr=cut_msg_arr(msg_arr_whole, 4096)
+    msg_arr=msg_arr_whole.copy()
     msg_arr_whole=start_chat(customize_system=False, msg_arr=msg_arr, msg_arr_whole=msg_arr_whole)
     return msg_arr_whole
 
