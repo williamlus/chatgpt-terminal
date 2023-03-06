@@ -160,25 +160,30 @@ def get_question():
         input_text = prompt("Enter your message (or q to quit): ", style=custom_style, history=history, key_bindings=get_key_bindings())
     return input_text
 
+def test_api_key(api_key:str) -> bool:
+    try:
+        openai.organization = "org-ggL1uiODdaNr1nCveaaGixyP"
+        openai.api_key = api_key
+        openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=[{"role": "user", "content": "Hello"}])
+        return True
+    except: return False
+
 def setup():
     openai.organization = "org-ggL1uiODdaNr1nCveaaGixyP"
-    try:
-        api_key=os.getenv("OPENAI_API_KEY")
-        assert(api_key!=None)
-        openai.api_key = api_key
-    except:
+    api_key=os.getenv("OPENAI_API_KEY")
+    if not test_api_key(api_key):
         print("Please set the environment variable OPENAI_API_KEY to your OpenAI API key to automatically authenticate requests.")
         while(True):
             api_key=input("Enter your OpenAI API key (or q to quit):")
             if api_key.lower()=="q": exit()
-            else: 
+            elif test_api_key(api_key): 
                 openai.api_key = api_key
                 try:
-                    openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=[{"role": "user", "content": "Hello"}])
                     os.system('setx OPENAI_API_KEY "{}"'.format(api_key))
-                    break
-                except:
-                    print("Invalid API key.")
+                    print("Successfully set environment variable OPENAI_API_KEY to your OpenAI API key.")
+                except: pass
+                break
+            else: print("Invalid API key.")
 
 def setup_theme():
     colorama.init()
