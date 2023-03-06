@@ -90,6 +90,11 @@ def color_code(msg:str):
 def get_key_bindings():
     bindings = KeyBindings()
     
+    @bindings.add(Keys.Tab)
+    def _(event: KeyPressEvent):
+        b = event.app.current_buffer
+        b.insert_text(" "*4)
+    
     @bindings.add("c-v")
     def _(event: KeyPressEvent):
         b = event.app.current_buffer
@@ -134,7 +139,7 @@ def get_key_bindings():
     @Condition
     def not_edit_mode(): return not is_insert_mode
     
-    @bindings.add('c-i', filter=not_edit_mode)
+    @bindings.add(Keys.Insert, filter=not_edit_mode)
     def _(event: KeyPressEvent): globals()['is_insert_mode'] = True
     
     @Condition
