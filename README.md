@@ -17,5 +17,5 @@ Run `chat.bat` to start a new chat, or `chatr.bat` to resume a chat.
 ## Useful Shortcuts:
 1. Press `ctrl-C` to copy the selected text, or terminate the program if no selection exists.
 2. Press `ctrl-V` to paste the text from the clipboard.
-3. Press `ctrl-I` to switch to edit mode, in which you can press `enter` to add a new line.
+3. Press `insert` to switch to edit mode, in which you can press `enter` to add a new line.
 4. Press `esc` to quit the edit mode, then you can press `enter` to submit your question to ChatGPT. 
