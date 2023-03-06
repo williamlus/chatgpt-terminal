@@ -249,7 +249,8 @@ def cut_msg_arr(msg_arr:list, max_len:int):
         total_len+=len(processed_msg.split())+non_alnum_count//16
         if total_len>max_len: break
         msg_arr_left.insert(1, msg_arr[i])
-    print(f"Cutting {len(msg_arr)-len(msg_arr_left)} from {len(msg_arr)} messages.")
+    print(f"Cutting {len(msg_arr)-len(msg_arr_left)} from {len(msg_arr)} messages..."\
+        .ljust(len(f"Waiting for response - (10.1s)")))
     return msg_arr_left
 
 def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
@@ -273,11 +274,13 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
         try: completion=ask_question(msg_arr)
         except Exception as e:
             if ("reduce the length of the messages" in str(e)):
+                print(f'Max length of messages reached. Remove the earliest dialog.')
                 msg_arr_left=cut_msg_arr(msg_arr, 4096)
                 if len(msg_arr)>=2 and len(msg_arr_left)==len(msg_arr):
+                    print(f"Cutting 1 from {len(msg_arr)} messages..."\
+                        .ljust(len(f"Waiting for response - (10.1s)")))
                     msg_arr.pop(1)
                 else: msg_arr=msg_arr_left
-                print(f'Max length of messages reached. Remove the earliest dialog.')
             elif ("Rate limit reached for" in str(e)): time.sleep(1)
             else: print(e)
             continue
