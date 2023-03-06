@@ -160,19 +160,10 @@ def get_question():
         input_text = prompt("Enter your message (or q to quit): ", style=custom_style, history=history, key_bindings=get_key_bindings())
     return input_text
 
-def get_api_key():
-    api_key=os.getenv("OPENAI_API_KEY")
-    if api_key==None:
-        try:
-            with open("api_key.txt", "r") as f:
-                api_key=f.read()
-        except: pass
-    return api_key
-
 def setup():
     openai.organization = "org-ggL1uiODdaNr1nCveaaGixyP"
     try:
-        api_key=get_api_key()
+        api_key=os.getenv("OPENAI_API_KEY")
         assert(api_key!=None)
         openai.api_key = api_key
     except:
@@ -184,8 +175,7 @@ def setup():
                 openai.api_key = api_key
                 try:
                     openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=[{"role": "user", "content": "Hello"}])
-                    with open("api_key.txt", "w") as f:
-                        f.write(api_key)
+                    os.system('setx OPENAI_API_KEY "{}"'.format(api_key))
                     break
                 except:
                     print("Invalid API key.")
