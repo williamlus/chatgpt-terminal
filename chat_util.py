@@ -179,8 +179,11 @@ def setup():
             elif test_api_key(api_key): 
                 openai.api_key = api_key
                 try:
-                    os.system('setx OPENAI_API_KEY "{}"'.format(api_key))
-                    print("Successfully set environment variable OPENAI_API_KEY to your OpenAI API key.")
+                    return_code=os.system('setx OPENAI_API_KEY "{}"'.format(api_key))
+                    if return_code==0:
+                        print("Successfully set environment variable OPENAI_API_KEY to your OpenAI API key.")
+                    else:
+                        print("Failed to set environment variable OPENAI_API_KEY to your OpenAI API key. Please set it manually.")
                 except: pass
                 break
             else: print("Invalid API key.")
