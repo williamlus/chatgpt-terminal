@@ -2,3 +2,5 @@
 programming_languages.txt
 __pycache__/
 api_key.txt
+auth
+.auth

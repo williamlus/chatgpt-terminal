@@ -170,36 +170,40 @@ def get_question():
             sys.exit(0)
     return input_text
 
-def test_api_key(api_key:str) -> bool:
+def test_api_key() -> bool:
     try:
-        openai.organization = "org-ggL1uiODdaNr1nCveaaGixyP"
-        openai.api_key = api_key
         openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=[{"role": "user", "content": "Hello"}])
         return True
     except Exception as e:
-        if "No API key provided" in str(e) or "Incorrect API key provided" in str(e):
+        if "No API key provided" in str(e) or "Incorrect API key provided" in str(e) or \
+            "You didn't provide an API key" in str(e):
             return False
         else: return True
 
+def record_auth(org:str, api_key:str):
+    with open("auth", "w") as f:
+        f.write(f"{org}\n{api_key}")
+    print("Authentication successful. Your credentials are saved to './auth'.")
+    print("You can now run the program without entering your credentials again.")
+
 def setup():
-    openai.organization = "org-ggL1uiODdaNr1nCveaaGixyP"
-    api_key=os.getenv("OPENAI_API_KEY")
-    if not test_api_key(api_key):
-        print("Please set the environment variable OPENAI_API_KEY to your OpenAI API key to automatically authenticate requests.")
-        while(True):
-            api_key=input("Enter your OpenAI API key (or q to quit):")
-            if api_key.lower()=="q": exit()
-            elif test_api_key(api_key): 
-                openai.api_key = api_key
-                try:
-                    return_code=os.system('setx OPENAI_API_KEY "{}"'.format(api_key))
-                    if return_code==0:
-                        print("Successfully set environment variable OPENAI_API_KEY to your OpenAI API key.")
-                    else:
-                        print("Failed to set environment variable OPENAI_API_KEY to your OpenAI API key. Please set it manually.")
-                except: pass
-                break
-            else: print("Invalid API key.")
+    
+    if os.path.exists("auth"):
+        with open("auth", "r") as f:
+            org,key=f.read().split("\n")
+            openai.organization=org
+            openai.api_key=key
+            if test_api_key(): return
+            
+    history = FileHistory(".auth") # authentification history
+    openai.organization=prompt("Enter your organization:",history=history)
+    openai.api_key=prompt("Enter your OpenAI API key:",history=history)
+    if test_api_key():
+        record_auth(openai.organization, openai.api_key) 
+        return
+    else:
+        print("Authentication failed. Please try again.")
+        sys.exit(0)
 
 def setup_theme():
     colorama.init()
