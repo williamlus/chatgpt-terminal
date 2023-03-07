@@ -1,3 +1,4 @@
+import shutil
 import sys
 import pyperclip
 import re
@@ -186,24 +187,26 @@ def record_auth(org:str, api_key:str):
     print("Authentication successful. Your credentials are saved to './auth'.")
     print("You can now run the program without entering your credentials again.")
 
-def setup():
+def setup(reset=False):
     
-    if os.path.exists("auth"):
-        with open("auth", "r") as f:
-            org,key=f.read().split("\n")
-            openai.organization=org
-            openai.api_key=key
-            if test_api_key(): return
+    if os.path.exists("auth") and not reset:
+        try:
+            with open("auth", "r") as f:
+                org,key=f.read().split("\n")
+                openai.organization=org
+                openai.api_key=key
+                return
+        except: pass
             
     history = FileHistory(".auth") # authentification history
-    openai.organization=prompt("Enter your organization:",history=history)
-    openai.api_key=prompt("Enter your OpenAI API key:",history=history)
+    openai.organization=prompt("Enter your organization:",history=history, key_bindings=get_key_bindings())
+    openai.api_key=prompt("Enter your OpenAI API key:",history=history, key_bindings=get_key_bindings())
     if test_api_key():
         record_auth(openai.organization, openai.api_key) 
         return
     else:
         print("Authentication failed. Please try again.")
-        sys.exit(0)
+        setup(reset=True)
 
 def setup_theme():
     colorama.init()
@@ -287,7 +290,12 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                     if len(msg_arr)>=2: msg_arr.pop(1)
                 else: msg_arr=msg_arr_left
             elif ("Rate limit reached for" in str(e)): time.sleep(1)
-            else: print(e)
+            elif ("Incorrect API key provided" in str(e)):
+                print("Authentication failed. Please provide a valid API key.")
+                setup(reset=True)
+            else:
+                print(e)
+                break
             continue
         
         resp=completion.choices[0].message.content
