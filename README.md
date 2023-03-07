@@ -5,7 +5,8 @@ Interactive ChatGPT terminal implemented in Python.
 1. Run `git clone https://github.com/williamlus/chatgpt-terminal.git`, and then `cd chatgpt-terminal`.
 2. Run `pip install -r requirements.txt` or `pip3 install -r requirements.txt` to install required packages.
 3. Create your OpenAI API account at https://platform.openai.com.
-3. Use your account to generate your `OPENAI_API_KEY` from https://platform.openai.com/account/api-keys, and add it to your system environment. I will run `os.getenv("OPENAI_API_KEY")` to obtain your API key for authentication.
+4. Use your account to generate your `OPENAI_API_KEY` from https://platform.openai.com/account/api-keys.
+5. Provide your OpenAI Organization and API Key to login.
 
 ## Usage:
 ### For Windows users:
