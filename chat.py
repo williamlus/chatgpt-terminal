@@ -28,3 +28,4 @@ if __name__ == "__main__":
         save_msg_arr(msg_arr)
     except:
         print("Unable to save chat log.", flush=True)
+        exit()
