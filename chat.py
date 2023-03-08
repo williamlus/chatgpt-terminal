@@ -11,13 +11,14 @@ def parse_args():
 
 if __name__ == "__main__":
     args=parse_args()
-    setup()
     setup_theme()
+    setup()
     if args.resume:
         try:
             msg_arr=read_msg_arr()
             msg_arr=resume_chat(msg_arr)
-        except:
+        except Exception as e:
+            print(e)
             print("Unable to resume chat. Starting a new chat session.", flush=True)
             msg_arr=start_chat(args.customize_system)
     else:

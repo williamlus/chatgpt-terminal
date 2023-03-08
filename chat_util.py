@@ -1,8 +1,4 @@
-import shutil
-import sys
-import pyperclip
-import re
-import openai, os, time, random, colorama
+import openai, os, time, random, re, pyperclip, sys, colorama
 import tkinter as tk
 from tkinter import filedialog
 from prompt_toolkit import prompt
@@ -13,31 +9,25 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.selection import SelectionType
 from prompt_toolkit.key_binding.key_processor import KeyPressEvent
 from prompt_toolkit.filters import Condition
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name
 from pygments.formatters import Terminal256Formatter
 import threading
+from colors import colors
 
 is_insert_mode=False
 response_completed=""
 start_time=None
 
 def log_msg(role:str, msg:str, role_color:str="blue", msg_color:str="reset"):
-    # mapping from string to colorama.Fore attributes
-    color_map = {
-        "blue": colorama.Fore.BLUE,
-        "red": colorama.Fore.RED,
-        "green": colorama.Fore.GREEN,
-        "yellow": colorama.Fore.YELLOW,
-        "reset": colorama.Fore.RESET,
-    }
-    if role=="assistant": msg=color_code(msg)
-    print(color_map[role_color]+role+": ", end='', flush=True)
-    print((color_map[msg_color]+msg).strip(), flush=True)
+    msg=color_code(msg, plain_color=msg_color)
+    print(colors.get_color(role_color)+role+": ", end='', flush=True)
+    print((colors.get_color(msg_color)+msg).strip(), flush=True)
 
 def print_msg_arr(msg_arr: list):
     for msg in msg_arr:
-        if msg['role']=="user": log_msg(msg['role'], msg['content'], role_color="yellow")
+        if msg['role']=="user": log_msg(msg['role'], msg['content'], role_color="lightred", msg_color="orange")
         else: log_msg(msg['role'], msg['content'], role_color="blue")
 
 def add_syntax_highlighting(code: str, language: str):
@@ -71,7 +61,7 @@ def programming_language_alias(lang:str):
     elif lang in ["c#", "C#"]: return "csharp"
     else: return lang
 
-def color_code(msg:str):
+def color_code(msg:str, plain_color:str):
     msg_arr=msg.split("```")
     for i in range(1,len(msg_arr),2):
         try:
@@ -86,8 +76,10 @@ def color_code(msg:str):
                 random.seed(time.time())
                 lang=random.choice(langs)
                 msg_arr[i]=add_syntax_highlighting(msg_arr[i], lang)
-            
-    return "```".join(msg_arr)
+    plain_color_str=colors.get_color(plain_color)
+    for i in range(0,len(msg_arr),2):
+        msg_arr[i]=plain_color_str+msg_arr[i]
+    return (plain_color_str+"```").join(msg_arr)
 
 def get_key_bindings():
     bindings = KeyBindings()
@@ -165,7 +157,8 @@ def get_question():
     input_text = ""
     while (input_text.strip()==""):
         try:
-            input_text = prompt("Enter your message (or q to quit): ", style=custom_style, history=history, key_bindings=get_key_bindings())
+            input_text = prompt("Enter your message (or q to quit): ", style=custom_style, \
+                history=history, key_bindings=get_key_bindings(), auto_suggest=AutoSuggestFromHistory())
         except KeyboardInterrupt:
             print("Exiting...")
             sys.exit(0)
@@ -188,7 +181,6 @@ def record_auth(org:str, api_key:str):
     print("You can now run the program without entering your credentials again.")
 
 def setup(reset=False):
-    
     if os.path.exists("auth") and not reset:
         try:
             with open("auth", "r") as f:
@@ -210,7 +202,7 @@ def setup(reset=False):
 
 def setup_theme():
     colorama.init()
-    
+
 def start_bar_clock() -> threading.Thread:
     def rotating_bar():
         global response_completed, start_time
@@ -218,14 +210,12 @@ def start_bar_clock() -> threading.Thread:
         while response_completed=='started':
             time_passed=round(time.time()-start_time, 1)
             msg=f"Waiting for response {bar_chars[int(time_passed/0.2)%4]} ({time_passed}s)"
-            sys.stdout.write(colorama.Fore.LIGHTBLACK_EX+msg)
-            sys.stdout.flush()
+            print(colors.get_color('darkgrey')+msg, flush=True, end='')
             time.sleep(0.1)
-            sys.stdout.write('\b'*len(msg))
-            sys.stdout.flush()
+            print('\b'*len(msg), flush=True, end='')
         time_passed=round(time.time()-start_time, 1)
         if response_completed=='finished':
-            print(colorama.Fore.LIGHTBLACK_EX+f"Response finished ({time_passed}s)".ljust(len(msg)), flush=True)
+            print(colors.get_color('darkgrey')+f"Response finished ({time_passed}s)".ljust(len(msg)), flush=True)
     bar_thread=threading.Thread(target=rotating_bar)
     bar_thread.start()
     return bar_thread
@@ -238,6 +228,10 @@ def ask_question(ques:list):
         completion=openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=ques)
         response_completed="finished"
     except Exception as e:
+        response_completed="failed"
+        bar_thread.join()
+        raise e
+    except KeyboardInterrupt as e:
         response_completed="failed"
         bar_thread.join()
         raise e
@@ -297,6 +291,9 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 print(e)
                 break
             continue
+        except KeyboardInterrupt as e:
+            print("\nKeyboard interrupt!")
+            return msg_arr_whole
         
         resp=completion.choices[0].message.content
         msg_arr.append({"role": "assistant", "content": resp})
