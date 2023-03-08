@@ -1,4 +1,3 @@
-import sys
 import argparse
 from chat_util import *
 

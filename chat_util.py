@@ -1,4 +1,4 @@
-import openai, os, time, random, re, pyperclip, sys, colorama
+import openai, os, time, random, re, pyperclip, sys, colorama, threading, tempfile
 import tkinter as tk
 from tkinter import filedialog
 from prompt_toolkit import prompt
@@ -13,12 +13,14 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name
 from pygments.formatters import Terminal256Formatter
-import threading
 from colors import colors
 
 is_insert_mode=False
 response_completed=""
 start_time=None
+tmp_dir = tempfile.gettempdir()
+if not os.path.exists(tmp_dir+"/chatgpt-cache"): os.mkdir(tmp_dir+"/chatgpt-cache")
+tmp_dir=tmp_dir+"/chatgpt-cache/"
 
 def log_msg(role:str, msg:str, role_color:str="blue", msg_color:str="reset"):
     msg=color_code(msg, plain_color=msg_color)
@@ -42,18 +44,18 @@ def contains(msg:str, arr:list):
 
 def get_programming_languages():
     try:
-        with open("programming_languages.txt", "r") as f:
+        with open(tmp_dir+"programming_languages.txt", "r") as f:
             langs=f.read().split("\n")
     except: 
         langs=['python','java','cpp', "csharp", "c++", "C++", "c#", "C#", "C", "c", "sql", "SQL"]
-        with open("programming_languages.txt", "w") as f:
+        with open(tmp_dir+"programming_languages.txt", "w") as f:
             f.write('\n'.join(langs))
     return langs
 
 def add_programming_language(lang:str):
     langs=get_programming_languages()
     if lang not in langs: 
-        with open("programming_languages.txt", "w") as f:
+        with open(tmp_dir+"programming_languages.txt", "w") as f:
             f.write('\n'.join(langs+[lang]))
 
 def programming_language_alias(lang:str):
@@ -175,7 +177,7 @@ def test_api_key() -> bool:
         else: return True
 
 def record_auth(org:str, api_key:str):
-    with open("auth", "w") as f:
+    with open(tmp_dir+"auth", "w") as f:
         f.write(f"{org}\n{api_key}")
     print("Authentication successful. Your credentials are saved to './auth'.")
     print("You can now run the program without entering your credentials again.")
@@ -183,7 +185,7 @@ def record_auth(org:str, api_key:str):
 def setup(reset=False):
     if os.path.exists("auth") and not reset:
         try:
-            with open("auth", "r") as f:
+            with open(tmp_dir+"auth", "r") as f:
                 org,key=f.read().split("\n")
                 openai.organization=org
                 openai.api_key=key
