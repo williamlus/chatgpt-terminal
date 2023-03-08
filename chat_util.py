@@ -14,13 +14,20 @@ from pygments import highlight
 from pygments.lexers import get_lexer_by_name
 from pygments.formatters import Terminal256Formatter
 from colors import colors
+from translator import translate_util
 
-is_insert_mode=False
-response_completed=""
-start_time=None
-tmp_dir = tempfile.gettempdir()
-if not os.path.exists(tmp_dir+"/chatgpt-cache"): os.mkdir(tmp_dir+"/chatgpt-cache")
-tmp_dir=tmp_dir+"/chatgpt-cache/"
+is_insert_mode, response_completed, start_time, lang, translate, tmp_dir = None, None, None, None, None, None
+
+def init_globals(language:str="en"):
+    global is_insert_mode, response_completed, start_time, lang, translate, tmp_dir
+    is_insert_mode=False
+    response_completed=""
+    start_time=None
+    lang=language
+    translate=lambda msg: translate_util(msg, lang=lang)
+    tmp_dir = tempfile.gettempdir()
+    if not os.path.exists(tmp_dir+"/chatgpt-cache"): os.mkdir(tmp_dir+"/chatgpt-cache")
+    tmp_dir=tmp_dir+"/chatgpt-cache/"
 
 def log_msg(role:str, msg:str, role_color:str="blue", msg_color:str="reset"):
     msg=color_code(msg, plain_color=msg_color)
@@ -155,14 +162,14 @@ def get_question():
         'prompt': 'ansired',
         '': 'ansiyellow',
     })
-    history = FileHistory(".history.txt") # This will create a history file to store your past inputs
+    history = FileHistory(tmp_dir+".history.txt") # This will create a history file to store your past inputs
     input_text = ""
     while (input_text.strip()==""):
         try:
-            input_text = prompt("Enter your message (or q to quit): ", style=custom_style, \
+            input_text = prompt(translate("Enter your question (or q to quit): "), style=custom_style, \
                 history=history, key_bindings=get_key_bindings(), auto_suggest=AutoSuggestFromHistory())
         except KeyboardInterrupt:
-            print("Exiting...")
+            print(translate("Exiting..."))
             sys.exit(0)
     return input_text
 
@@ -179,11 +186,11 @@ def test_api_key() -> bool:
 def record_auth(org:str, api_key:str):
     with open(tmp_dir+"auth", "w") as f:
         f.write(f"{org}\n{api_key}")
-    print("Authentication successful. Your credentials are saved to './auth'.")
-    print("You can now run the program without entering your credentials again.")
+    print(translate("Authentication successful. Your credentials are saved to")+f" {os.path.normpath(tmp_dir+'auth')}.")
+    print(translate("You can now run the program without entering your credentials again."))
 
 def setup(reset=False):
-    if os.path.exists("auth") and not reset:
+    if os.path.exists(tmp_dir+"auth") and not reset:
         try:
             with open(tmp_dir+"auth", "r") as f:
                 org,key=f.read().split("\n")
@@ -192,14 +199,14 @@ def setup(reset=False):
                 return
         except: pass
             
-    history = FileHistory(".auth") # authentification history
-    openai.organization=prompt("Enter your organization:",history=history, key_bindings=get_key_bindings())
-    openai.api_key=prompt("Enter your OpenAI API key:",history=history, key_bindings=get_key_bindings())
+    history = FileHistory(tmp_dir+".auth") # authentification history
+    openai.organization=prompt(translate("Enter your organization:"),history=history, key_bindings=get_key_bindings())
+    openai.api_key=prompt(translate("Enter your OpenAI API key:"),history=history, key_bindings=get_key_bindings())
     if test_api_key():
         record_auth(openai.organization, openai.api_key) 
         return
     else:
-        print("Authentication failed. Please try again.")
+        print(translate("Authentication failed. Please try again."))
         setup(reset=True)
 
 def setup_theme():
@@ -211,13 +218,13 @@ def start_bar_clock() -> threading.Thread:
         bar_chars="/-\\|"
         while response_completed=='started':
             time_passed=round(time.time()-start_time, 1)
-            msg=f"Waiting for response {bar_chars[int(time_passed/0.2)%4]} ({time_passed}s)"
+            msg=translate("Waiting for response")+f" {bar_chars[int(time_passed/0.2)%4]} ({time_passed}s)"
             print(colors.get_color('darkgrey')+msg, flush=True, end='')
             time.sleep(0.1)
             print('\b'*len(msg), flush=True, end='')
         time_passed=round(time.time()-start_time, 1)
         if response_completed=='finished':
-            print(colors.get_color('darkgrey')+f"Response finished ({time_passed}s)".ljust(len(msg)), flush=True)
+            print(colors.get_color('darkgrey')+translate("Response finished")+f" ({time_passed}s)".ljust(len(msg)), flush=True)
     bar_thread=threading.Thread(target=rotating_bar)
     bar_thread.start()
     return bar_thread
@@ -259,10 +266,10 @@ def cut_msg_arr(msg_arr:list, max_len:int):
 def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
     if len(msg_arr_whole)==0: # start a new chat
         system_msg="You are a helpful assistant."
-        print(f"Default system prompt: {system_msg}")
+        print(translate("Default system prompt:")+f" {system_msg}")
         if customize_system: 
-            system_msg=input("Enter a new system prompt: ")
-            print(f"System prompt set to: {system_msg}")
+            system_msg=input(translate("Enter a new system prompt: "))
+            print(translate("System prompt set to:")+f" {system_msg}")
         msg_arr.append({"role": "system", "content": system_msg})
         msg_arr_whole.append({"role": "system", "content": system_msg})
         
@@ -277,7 +284,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
         try: completion=ask_question(msg_arr)
         except Exception as e:
             if ("reduce the length of the messages" in str(e)):
-                print(f'Max length of messages reached. Remove the earliest dialog.')
+                print(translate('Max length of messages reached. Remove the earliest dialog.'))
                 msg_arr_left=cut_msg_arr(msg_arr, 4096)
                 if len(msg_arr)>=2 and len(msg_arr_left)==len(msg_arr):
                     print(f"Cutting 2 from {len(msg_arr)} messages..."\
@@ -287,14 +294,14 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 else: msg_arr=msg_arr_left
             elif ("Rate limit reached for" in str(e)): time.sleep(1)
             elif ("Incorrect API key provided" in str(e)):
-                print("Authentication failed. Please provide a valid API key.")
+                print(translate("Authentication failed. Please provide a valid API key."))
                 setup(reset=True)
             else:
                 print(e)
                 break
             continue
         except KeyboardInterrupt as e:
-            print("\nKeyboard interrupt!")
+            print("\n"+translate("Keyboard interrupt!"))
             return msg_arr_whole
         
         resp=completion.choices[0].message.content
@@ -328,7 +335,7 @@ def save_msg_arr(msg_arr):
     with open(file_path, 'w', encoding='utf-8') as f:
         for item in msg_arr:
             f.write(str(item) + '\n')
-    print(f"Chat is saved to {file_path}")
+    print(translate("Chat is saved to")+f" {file_path}")
 
 def read_msg_arr():
     file_path = ask_path(op="open")
