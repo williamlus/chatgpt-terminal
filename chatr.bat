@@ -1,2 +1,2 @@
 cd /d %~dp0
-python chat.py --resume
+python chat.py -lang cn --resume

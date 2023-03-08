@@ -1,2 +1,2 @@
 cd /d %~dp0
-python chat.py
+python chat.py -lang cn
