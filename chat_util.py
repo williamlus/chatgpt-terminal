@@ -1,22 +1,19 @@
-import openai, os, time, random, re, pyperclip, sys, colorama, threading, tempfile
+import openai, os, time, random, re, sys, colorama, threading, tempfile
 import tkinter as tk
 from tkinter import filedialog
 from prompt_toolkit import prompt
 from prompt_toolkit.styles import Style
 from prompt_toolkit.history import FileHistory
-from prompt_toolkit.keys import Keys
-from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.selection import SelectionType
-from prompt_toolkit.key_binding.key_processor import KeyPressEvent
-from prompt_toolkit.filters import Condition
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name
 from pygments.formatters import Terminal256Formatter
 from colors import colors
 from translator import translate_util
+from key_bindings import get_key_bindings
 
 is_insert_mode, response_completed, start_time, lang, translate, tmp_dir = None, None, None, None, None, None
+msg_arr_cache={}
 
 def init_globals(language:str="en"):
     global is_insert_mode, response_completed, start_time, lang, translate, tmp_dir
@@ -30,9 +27,12 @@ def init_globals(language:str="en"):
     tmp_dir=tmp_dir+"/chatgpt-cache/"
 
 def log_msg(role:str, msg:str, role_color:str="blue", msg_color:str="reset"):
-    msg=color_code(msg, plain_color=msg_color)
+    if msg not in msg_arr_cache:
+        msg_colored=color_code(msg, plain_color=msg_color)
+        msg_arr_cache[msg]=msg_colored
+    else: msg_colored=msg_arr_cache[msg]
     print(colors.get_color(role_color)+role+": ", end='', flush=True)
-    print((colors.get_color(msg_color)+msg).strip(), flush=True)
+    print((colors.get_color(msg_color)+msg_colored).strip(), flush=True)
 
 def print_msg_arr(msg_arr: list):
     for msg in msg_arr:
@@ -90,72 +90,7 @@ def color_code(msg:str, plain_color:str):
         msg_arr[i]=plain_color_str+msg_arr[i]
     return (plain_color_str+"```").join(msg_arr)
 
-def get_key_bindings():
-    bindings = KeyBindings()
-    
-    @bindings.add(Keys.Tab)
-    def _(event: KeyPressEvent):
-        b = event.app.current_buffer
-        b.insert_text(" "*4)
-    
-    @bindings.add("c-v")
-    def _(event: KeyPressEvent):
-        b = event.app.current_buffer
-        s = pyperclip.paste()
-        b.insert_text(s)
-        
-    @bindings.add("c-c")
-    def _(event: KeyPressEvent):
-        buffer = event.app.current_buffer
-        selection = buffer.document.selection
-        if selection and selection.type == SelectionType.CHARACTERS:
-            from_, to = sorted([buffer.cursor_position, buffer.selection_state.original_cursor_position])
-            selected_text = buffer.text[from_:to]
-            pyperclip.copy(selected_text)
-        else: sys.exit(0)
-        
-    @bindings.add("right")
-    def _(event: KeyPressEvent):
-        buffer = event.app.current_buffer
-        selection = buffer.document.selection
-        if selection and selection.type == SelectionType.CHARACTERS:
-            buffer.document.selection.enter_shift_mode
-            tgt = max(buffer.cursor_position, buffer.selection_state.original_cursor_position)
-            buffer.exit_selection()
-            buffer.cursor_position = tgt
-        else:
-            try: buffer.cursor_position += 1
-            except Exception as e: pass
-            
-    @bindings.add("left")
-    def _(event: KeyPressEvent):
-        buffer = event.app.current_buffer
-        selection = buffer.document.selection
-        if selection and selection.type == SelectionType.CHARACTERS:
-            tgt = min(buffer.cursor_position, buffer.selection_state.original_cursor_position)
-            buffer.exit_selection()
-            buffer.cursor_position = tgt
-        else: 
-            try: buffer.cursor_position -= 1
-            except Exception as e: pass
-    
-    globals()['is_insert_mode'] = False
-    
-    @bindings.add(Keys.Insert)
-    def _(event: KeyPressEvent): globals()['is_insert_mode'] = True
-    
-    @ bindings.add('escape')
-    def _(event: KeyPressEvent): globals()['is_insert_mode'] = False
-    
-    @Condition
-    def is_edit_mode() -> bool:
-        return globals()['is_insert_mode']
-    
-    @ bindings.add(Keys.Enter, filter=is_edit_mode)
-    def _(event: KeyPressEvent):
-        event.current_buffer.newline()
-    
-    return bindings
+
 
 def get_question():
     custom_style = Style.from_dict({
@@ -212,41 +147,24 @@ def setup(reset=False):
 def setup_theme():
     colorama.init()
 
-def start_bar_clock() -> threading.Thread:
-    def rotating_bar():
-        global response_completed, start_time
-        bar_chars="/-\\|"
-        while response_completed=='started':
-            time_passed=round(time.time()-start_time, 1)
-            msg=translate("Waiting for response")+f" {bar_chars[int(time_passed/0.2)%4]} ({time_passed}s)"
-            print(colors.get_color('darkgrey')+msg, flush=True, end='')
-            time.sleep(0.1)
-            print('\b'*len(msg), flush=True, end='')
-        time_passed=round(time.time()-start_time, 1)
-        if response_completed=='finished':
-            print(colors.get_color('darkgrey')+translate("Response finished")+f" ({time_passed}s)".ljust(len(msg)), flush=True)
-    bar_thread=threading.Thread(target=rotating_bar)
-    bar_thread.start()
-    return bar_thread
-
 def ask_question(ques:list):
-    global response_completed, start_time
-    response_completed, start_time="started", time.time()
-    bar_thread=start_bar_clock()
+    # print(colors.fg.darkgrey+'Asking ChatGPT...'+colors.reset+"", flush=True)
+    ans=""
     try:
-        completion=openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=ques)
-        response_completed="finished"
+        response=openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=ques,stream=True)
+        for r in response:
+            delta=r.choices[0].delta
+            if "role" in delta:
+                print(colors.fg.blue+str(delta["role"])+": "+colors.reset+"", end="", flush=True)
+            elif "content" in delta:
+                ans+=delta["content"]
+                print(delta["content"], end="", flush=True)
+            else: pass
     except Exception as e:
-        response_completed="failed"
-        bar_thread.join()
-        raise e
-    except KeyboardInterrupt as e:
-        response_completed="failed"
-        bar_thread.join()
-        raise e
-    bar_thread.join()
-    return completion
-
+        if len(ans)!=0:
+            return ans
+        else: raise e
+    return ans
 
 def cut_msg_arr(msg_arr:list, max_len:int):
     sys_msg=msg_arr[0]
@@ -281,7 +199,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             msg_arr.append({"role": "user", "content": input_text})
             msg_arr_whole.append({"role": "user", "content": input_text})
         
-        try: completion=ask_question(msg_arr)
+        try: response=ask_question(msg_arr)
         except Exception as e:
             if ("reduce the length of the messages" in str(e)):
                 print(translate('Max length of messages reached. Remove the earliest dialog.'))
@@ -304,10 +222,13 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             print("\n"+translate("Keyboard interrupt!"))
             return msg_arr_whole
         
-        resp=completion.choices[0].message.content
-        msg_arr.append({"role": "assistant", "content": resp})
-        msg_arr_whole.append({"role": "assistant", "content": resp})
-        log_msg("assistant", resp)
+        # resp=completion.choices[0].message.content
+        msg_arr.append({"role": "assistant", "content": response})
+        msg_arr_whole.append({"role": "assistant", "content": response})
+        # log_msg("assistant", resp)
+        # clear screen
+        os.system('cls' if os.name=='nt' else 'clear')
+        print_msg_arr(msg_arr_whole)
     return msg_arr_whole
 
 def resume_chat(msg_arr_whole: list):
