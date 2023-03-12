@@ -101,7 +101,7 @@ def get_question():
     input_text = ""
     while (input_text.strip()==""):
         try:
-            input_text = prompt(translate("Enter your question (or q to quit): "), style=custom_style, \
+            input_text = prompt(translate("Enter your question (or q to quit, r to refresh): "), style=custom_style, \
                 history=history, key_bindings=get_key_bindings(), auto_suggest=AutoSuggestFromHistory())
         except KeyboardInterrupt:
             print(translate("Exiting..."))
@@ -159,7 +159,7 @@ def ask_question(ques:list):
             elif "content" in delta:
                 ans+=delta["content"]
                 print(delta["content"], end="", flush=True)
-            else: pass
+            else: continue
     except Exception as e:
         if len(ans)!=0:
             return ans
@@ -181,6 +181,10 @@ def cut_msg_arr(msg_arr:list, max_len:int):
         .ljust(len(f"Waiting for response - (10.1s)")))
     return msg_arr_left
 
+def refresh(msg_arr_whole:list):
+    os.system('cls' if os.name=='nt' else 'clear')
+    print_msg_arr(msg_arr_whole)
+
 def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
     if len(msg_arr_whole)==0: # start a new chat
         system_msg="You are a helpful assistant."
@@ -195,7 +199,9 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
     while(input_text.lower()!="q"):
         if msg_arr[-1]['role']!="user":
             input_text=get_question()
-            if input_text.lower()=="q": break
+            if input_text=="q": break
+            elif input_text=="r": refresh(msg_arr_whole); continue
+                
             msg_arr.append({"role": "user", "content": input_text})
             msg_arr_whole.append({"role": "user", "content": input_text})
         
@@ -222,13 +228,11 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             print("\n"+translate("Keyboard interrupt!"))
             return msg_arr_whole
         
-        # resp=completion.choices[0].message.content
         msg_arr.append({"role": "assistant", "content": response})
         msg_arr_whole.append({"role": "assistant", "content": response})
-        # log_msg("assistant", resp)
-        # clear screen
-        os.system('cls' if os.name=='nt' else 'clear')
-        print_msg_arr(msg_arr_whole)
+        
+        # refresh screen
+        refresh(msg_arr_whole)
     return msg_arr_whole
 
 def resume_chat(msg_arr_whole: list):
