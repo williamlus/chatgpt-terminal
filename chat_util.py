@@ -103,7 +103,10 @@ def get_question():
         try:
             input_text = prompt(translate("Enter your question (or q to quit, r to refresh): "), style=custom_style, \
                 history=history, key_bindings=get_key_bindings(), auto_suggest=AutoSuggestFromHistory())
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as e:
+            print(translate("Exiting..."))
+            sys.exit(0)
+        except EOFError as e:
             print(translate("Exiting..."))
             sys.exit(0)
     return input_text

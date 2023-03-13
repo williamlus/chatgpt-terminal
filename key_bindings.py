@@ -1,4 +1,4 @@
-import pyperclip
+import pyperclip, sys
 from prompt_toolkit.keys import Keys
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.selection import SelectionType
