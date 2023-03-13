@@ -148,7 +148,6 @@ def setup_theme():
     colorama.init()
 
 def ask_question(ques:list):
-    # print(colors.fg.darkgrey+'Asking ChatGPT...'+colors.reset+"", flush=True)
     ans=""
     try:
         response=openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=ques,stream=True)
@@ -160,6 +159,7 @@ def ask_question(ques:list):
                 ans+=delta["content"]
                 print(delta["content"], end="", flush=True)
             else: continue
+        print()
     except Exception as e:
         if len(ans)!=0:
             return ans
@@ -231,8 +231,9 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
         msg_arr.append({"role": "assistant", "content": response})
         msg_arr_whole.append({"role": "assistant", "content": response})
         
-        # refresh screen
-        refresh(msg_arr_whole)
+        # refresh screen if new code exists
+        if "```" in response:
+            refresh(msg_arr_whole)
     return msg_arr_whole
 
 def resume_chat(msg_arr_whole: list):
