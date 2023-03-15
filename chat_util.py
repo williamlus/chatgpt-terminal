@@ -204,6 +204,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             input_text=get_question()
             if input_text=="q": break
             elif input_text=="r": refresh(msg_arr_whole); continue
+            elif input_text=="-l": setup(reset=True); continue
                 
             msg_arr.append({"role": "user", "content": input_text})
             msg_arr_whole.append({"role": "user", "content": input_text})
