@@ -162,7 +162,7 @@ def ask_question(ques:list):
             elif "content" in delta:
                 ans+=delta["content"]
                 print(delta["content"], end="", flush=True)
-            else: break
+            else: continue
         print()
         del response
     except Exception as e:
