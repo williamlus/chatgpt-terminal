@@ -153,8 +153,23 @@ def setup_theme():
 def ask_question(ques:list):
     ans=""
     response=None
+    response_thread=None
     try:
-        response=openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=ques,stream=True)
+        # create a new thread to receive reponse 
+        response_arr=[None,]
+        def temp_f(ques):
+            response_arr[0]=openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=ques, stream=True)
+        response_thread = threading.Thread(target=temp_f, args=(ques,))
+        response_thread.start()
+        while(response_arr[0]==None):
+            try:
+                response_thread.join(0.5) # wait for 0.5 seconds for the response thread to finish
+            except KeyboardInterrupt: # if the user presses Ctrl+C
+                print("Keyboard Interrupt, trying to request again...")
+                response_thread._stop()
+                break
+        response=response_arr[0]
+        
         for r in response:
             delta=r.choices[0].delta
             if "role" in delta:
@@ -165,10 +180,13 @@ def ask_question(ques:list):
             else: continue
         print()
     except Exception as e:
-        if len(ans)!=0:
-            return ans
-        else: raise e
-    return ans
+        if len(ans)==0: raise e
+    except KeyboardInterrupt as e:
+        if len(ans)==0: raise e
+    finally:
+        del response_thread
+        if len(ans.strip())!=0: return ans
+        else: raise Exception("No answer received.")
 
 def cut_msg_arr(msg_arr:list, max_len:int):
     sys_msg=msg_arr[0]
@@ -225,6 +243,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             elif ("Incorrect API key provided" in str(e)):
                 print(translate("Authentication failed. Please provide a valid API key."))
                 setup(reset=True)
+            elif ("No answer received" in str(e)): pass
             else:
                 print(e)
                 break

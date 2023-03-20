@@ -31,4 +31,8 @@ if __name__ == "__main__":
         save_msg_arr(msg_arr)
     except:
         print(translate_util("Unable to save chat log.",lang=args.lang), flush=True)
-        exit()
+        threads = threading.enumerate()
+        for thread in threads:
+            # kill thread
+            thread._stop()
+        sys.exit(0)
