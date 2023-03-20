@@ -53,9 +53,11 @@ def generator_proc(conn, org: str, api_key: str):
             ques=conn.recv()
             # print("Question Received! ", end="", flush=True)
             # print("Processing...", end="", flush=True)
-            # print("question:", type(ques), flush=True)
+            print(colors.get_color("darkgrey")+"Preparing for ans..."+colors.reset, end="", flush=True)
             response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=ques, stream=True)
-            # print("Starting stream...", flush=True)
+            print("\b"*len("Preparing for ans..."), end="", flush=True)
+            print(colors.get_color("darkgrey")+"Start streaming..."
+                  .ljust(len("Preparing for ans..."))+colors.reset, flush=True)
             for r in response:
                 delta=r.choices[0].delta
                 conn.send(delta)
