@@ -12,120 +12,12 @@ from colors import colors
 from translator import translate_util
 from key_bindings import get_key_bindings
 
+# Global variables ---------------------------------------------------------------
+
 is_insert_mode, response_completed, start_time, lang, translate, tmp_dir = None, None, None, None, None, None
 msg_arr_cache={}
 
-def init_globals(language:str="en"):
-    global is_insert_mode, response_completed, start_time, lang, translate, tmp_dir
-    is_insert_mode=False
-    response_completed=""
-    start_time=None
-    lang=language
-    translate=lambda msg: translate_util(msg, lang=lang)
-    tmp_dir = tempfile.gettempdir()
-    if not os.path.exists(tmp_dir+"/chatgpt-cache"): os.mkdir(tmp_dir+"/chatgpt-cache")
-    tmp_dir=tmp_dir+"/chatgpt-cache/"
-
-def log_msg(role:str, msg:str, role_color:str="blue", msg_color:str="reset"):
-    if msg not in msg_arr_cache:
-        msg_colored=color_code(msg, plain_color=msg_color)
-        msg_arr_cache[msg]=msg_colored
-    else: msg_colored=msg_arr_cache[msg]
-    print(colors.get_color(role_color)+role+": ", end='', flush=True)
-    print((colors.get_color(msg_color)+msg_colored).strip(), flush=True)
-
-def print_msg_arr(msg_arr: list):
-    for msg in msg_arr:
-        if msg['role']=="user": log_msg(msg['role'], msg['content'], role_color="lightred", msg_color="orange")
-        else: log_msg(msg['role'], msg['content'], role_color="blue")
-
-def add_syntax_highlighting(code: str, language: str):
-    language=programming_language_alias(language)
-    lexer = get_lexer_by_name(language)
-    formatter = Terminal256Formatter(style='monokai')
-    highlighted_code = highlight(code, lexer, formatter)
-    return highlighted_code
-
-def contains(msg:str, arr:list):
-    return [a for a in arr if a in msg.split()+[e[:-1] for e in msg.split() if len(e)>0]]
-
-def get_programming_languages():
-    try:
-        with open(tmp_dir+"programming_languages.txt", "r") as f:
-            langs=f.read().split("\n")
-    except: 
-        langs=['python','java','cpp', "csharp", "c++", "C++", "c#", "C#", "C", "c", "sql", "SQL"]
-        with open(tmp_dir+"programming_languages.txt", "w") as f:
-            f.write('\n'.join(langs))
-    return langs
-
-def add_programming_language(lang:str):
-    langs=get_programming_languages()
-    if lang not in langs: 
-        with open(tmp_dir+"programming_languages.txt", "w") as f:
-            f.write('\n'.join(langs+[lang]))
-
-def programming_language_alias(lang:str):
-    if lang in ["c++", "C++"]: return "cpp"
-    elif lang in ["c#", "C#"]: return "csharp"
-    else: return lang
-
-def color_code(msg:str, plain_color:str):
-    msg_arr=msg.split("```")
-    for i in range(1,len(msg_arr),2):
-        try:
-            programming_language=msg_arr[i].split("\n")[0].strip()
-            msg_arr[i]=add_syntax_highlighting(msg_arr[i], programming_language)
-            add_programming_language(programming_language)
-        except: 
-            all_langs=get_programming_languages()
-            langs=contains(msg_arr[i-1].lower(), all_langs)+\
-                contains(msg_arr[i-1], all_langs)
-            if len(langs)!=0:
-                random.seed(time.time())
-                lang=random.choice(langs)
-                msg_arr[i]=add_syntax_highlighting(msg_arr[i], lang)
-    plain_color_str=colors.get_color(plain_color)
-    for i in range(0,len(msg_arr),2):
-        msg_arr[i]=plain_color_str+msg_arr[i]
-    return (plain_color_str+"```").join(msg_arr)
-
-
-
-def get_question():
-    custom_style = Style.from_dict({
-        'prompt': 'ansired',
-        '': 'ansiyellow',
-    })
-    history = FileHistory(tmp_dir+".history.txt") # This will create a history file to store your past inputs
-    input_text = ""
-    while (input_text.strip()==""):
-        try:
-            input_text = prompt(translate("Enter your question (or q to quit, r to refresh): "), style=custom_style, \
-                history=history, key_bindings=get_key_bindings(), auto_suggest=AutoSuggestFromHistory())
-        except KeyboardInterrupt as e:
-            print(translate("Exiting..."))
-            sys.exit(0)
-        except EOFError as e:
-            print(translate("Exiting..."))
-            sys.exit(0)
-    return input_text
-
-def test_api_key() -> bool:
-    try:
-        openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=[{"role": "user", "content": "Hello"}])
-        return True
-    except Exception as e:
-        if "No API key provided" in str(e) or "Incorrect API key provided" in str(e) or \
-            "You didn't provide an API key" in str(e):
-            return False
-        else: return True
-
-def record_auth(org:str, api_key:str):
-    with open(tmp_dir+"auth", "w") as f:
-        f.write(f"{org}\n{api_key}")
-    print(translate("Authentication successful. Your credentials are saved to")+f" {os.path.normpath(tmp_dir+'auth')}.")
-    print(translate("You can now run the program without entering your credentials again."))
+# Setup functions ---------------------------------------------------------------
 
 def setup(reset=False):
     if os.path.exists(tmp_dir+"auth") and not reset:
@@ -150,43 +42,57 @@ def setup(reset=False):
 def setup_theme():
     colorama.init()
 
-def ask_question(ques:list):
-    ans=""
-    response=None
-    response_thread=None
+def init_globals(language:str="en"):
+    global is_insert_mode, response_completed, start_time, lang, translate, tmp_dir
+    is_insert_mode=False
+    response_completed=""
+    start_time=None
+    lang=language
+    translate=lambda msg: translate_util(msg, lang=lang)
+    tmp_dir = tempfile.gettempdir()
+    if not os.path.exists(tmp_dir+"/chatgpt-cache"): os.mkdir(tmp_dir+"/chatgpt-cache")
+    tmp_dir=tmp_dir+"/chatgpt-cache/"
+
+def test_api_key() -> bool:
     try:
-        # create a new thread to receive reponse 
-        response_arr=[None,]
-        def temp_f(ques):
-            response_arr[0]=openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=ques, stream=True)
-        response_thread = threading.Thread(target=temp_f, args=(ques,))
-        response_thread.start()
-        while(response_arr[0]==None):
-            try:
-                response_thread.join(0.5) # wait for 0.5 seconds for the response thread to finish
-            except KeyboardInterrupt: # if the user presses Ctrl+C
-                print("Keyboard Interrupt, trying to request again...")
-                response_thread._stop()
-                break
-        response=response_arr[0]
-        
-        for r in response:
-            delta=r.choices[0].delta
-            if "role" in delta:
-                print(colors.fg.blue+str(delta["role"])+": "+colors.reset+"", end="", flush=True)
-            elif "content" in delta:
-                ans+=delta["content"]
-                print(delta["content"], end="", flush=True)
-            else: continue
-        print()
+        openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=[{"role": "user", "content": "Hello"}])
+        return True
     except Exception as e:
-        if len(ans)==0: raise e
-    except KeyboardInterrupt as e:
-        if len(ans)==0: raise e
-    finally:
-        del response_thread
-        if len(ans.strip())!=0: return ans
-        else: raise Exception("No answer received.")
+        if "No API key provided" in str(e) or "Incorrect API key provided" in str(e) or \
+            "You didn't provide an API key" in str(e):
+            return False
+        else: return True
+
+# String and display util functions --------------------------------------------------
+
+def add_syntax_highlighting(code: str, language: str):
+    language=programming_language_alias(language)
+    lexer = get_lexer_by_name(language)
+    formatter = Terminal256Formatter(style='monokai')
+    highlighted_code = highlight(code, lexer, formatter)
+    return highlighted_code
+
+def color_code(msg:str, plain_color:str):
+    def contains(msg:str, arr:list):
+        return [a for a in arr if a in msg.split()+[e[:-1] for e in msg.split() if len(e)>0]]
+    msg_arr=msg.split("```")
+    for i in range(1,len(msg_arr),2):
+        try:
+            programming_language=msg_arr[i].split("\n")[0].strip()
+            msg_arr[i]=add_syntax_highlighting(msg_arr[i], programming_language)
+            add_programming_language(programming_language)
+        except: 
+            all_langs=get_programming_languages()
+            langs=contains(msg_arr[i-1].lower(), all_langs)+\
+                contains(msg_arr[i-1], all_langs)
+            if len(langs)!=0:
+                random.seed(time.time())
+                lang=random.choice(langs)
+                msg_arr[i]=add_syntax_highlighting(msg_arr[i], lang)
+    plain_color_str=colors.get_color(plain_color)
+    for i in range(0,len(msg_arr),2):
+        msg_arr[i]=plain_color_str+msg_arr[i]
+    return (plain_color_str+"```").join(msg_arr)
 
 def cut_msg_arr(msg_arr:list, max_len:int):
     sys_msg=msg_arr[0]
@@ -199,13 +105,80 @@ def cut_msg_arr(msg_arr:list, max_len:int):
         total_len+=len(processed_msg.split())+non_alnum_count//16
         if total_len>max_len: break
         msg_arr_left.insert(1, msg_arr[i])
-    print(f"Cutting {len(msg_arr)-len(msg_arr_left)} from {len(msg_arr)} messages..."\
-        .ljust(len(f"Waiting for response - (10.1s)")))
+    print(f"Cutting {len(msg_arr)-len(msg_arr_left)} from {len(msg_arr)} messages...")
     return msg_arr_left
 
-def refresh(msg_arr_whole:list):
-    os.system('cls' if os.name=='nt' else 'clear')
-    print_msg_arr(msg_arr_whole)
+def log_msg(role:str, msg:str, role_color:str="blue", msg_color:str="reset"):
+    if msg not in msg_arr_cache:
+        msg_colored=color_code(msg, plain_color=msg_color)
+        msg_arr_cache[msg]=msg_colored
+    else: msg_colored=msg_arr_cache[msg]
+    print(colors.get_color(role_color)+role+": ", end='', flush=True)
+    print((colors.get_color(msg_color)+msg_colored).strip(), flush=True)
+
+def print_msg_arr(msg_arr: list):
+    for msg in msg_arr:
+        if msg['role']=="user": log_msg(msg['role'], msg['content'], role_color="lightred", msg_color="orange")
+        else: log_msg(msg['role'], msg['content'], role_color="blue")
+
+# ChatGPT interface ---------------------------------------------------------------
+
+def ask_question(ques:list):
+    ans=""
+    try:
+        # create a new thread to receive reponse 
+        response_arr=[None,]
+        def temp_f(ques):
+            response_arr[0]=openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=ques, stream=True)
+        response_thread = threading.Thread(target=temp_f, args=(ques,))
+        response_thread.start()
+        try:
+            while(response_arr[0]==None): 
+                time.sleep(0.1) # wait for response and capture KeyboardInterrupt
+        except KeyboardInterrupt: # if the user presses Ctrl+C
+            print("Keyboard Interrupt, trying to request again...")
+            response_thread._stop()
+            raise Exception("TryAgain")
+        
+        response=response_arr[0]
+        for r in response:
+            delta=r.choices[0].delta
+            if "role" in delta:
+                print(colors.fg.blue+str(delta["role"])+": "+colors.reset+"", end="", flush=True)
+            elif "content" in delta:
+                ans+=delta["content"]
+                print(delta["content"], end="", flush=True)
+            else: continue
+        print()
+        
+    except Exception as e:
+        if len(ans)==0: raise e
+    except KeyboardInterrupt as e:
+        if len(ans)==0: raise e
+    finally:
+        if len(ans.strip())!=0: return ans
+        else: raise Exception("TryAgain")
+
+def get_question():
+    custom_style = Style.from_dict({
+        'prompt': 'ansired',
+        '': 'ansiyellow',
+    })
+    history = FileHistory(tmp_dir+".history.txt") # This will create a history file to store your past inputs
+    input_text = ""
+    while (input_text.strip()==""):
+        try:
+            input_text = prompt(translate("Enter your question (or q to quit, r to refresh): "), style=custom_style, \
+                history=history, key_bindings=get_key_bindings(), auto_suggest=AutoSuggestFromHistory())
+        except KeyboardInterrupt as e:
+            print(translate("Exiting..."))
+            sys.exit(0)
+        except EOFError as e:
+            print(translate("Exiting..."))
+            sys.exit(0)
+    return input_text
+
+# Chat functions ---------------------------------------------------------------
 
 def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
     if len(msg_arr_whole)==0: # start a new chat
@@ -243,7 +216,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             elif ("Incorrect API key provided" in str(e)):
                 print(translate("Authentication failed. Please provide a valid API key."))
                 setup(reset=True)
-            elif ("No answer received" in str(e)): pass
+            elif ("TryAgain" in str(e)): pass
             else:
                 print(e)
                 break
@@ -265,6 +238,13 @@ def resume_chat(msg_arr_whole: list):
     msg_arr=msg_arr_whole.copy()
     msg_arr_whole=start_chat(customize_system=False, msg_arr=msg_arr, msg_arr_whole=msg_arr_whole)
     return msg_arr_whole
+
+def refresh(msg_arr_whole:list):
+    os.system('cls' if os.name=='nt' else 'clear')
+    print_msg_arr(msg_arr_whole)
+
+
+# File I/O functions ---------------------------------------------------------------
 
 def ask_path(op: str="save"):
     # create a Tkinter root window
@@ -297,3 +277,31 @@ def read_msg_arr():
         for line in lines:
             my_list.append(eval(line.strip())) # Use eval function to convert string to object
         return my_list
+   
+def record_auth(org:str, api_key:str):
+    with open(tmp_dir+"auth", "w") as f:
+        f.write(f"{org}\n{api_key}")
+    print(translate("Authentication successful. Your credentials are saved to")+f" {os.path.normpath(tmp_dir+'auth')}.")
+    print(translate("You can now run the program without entering your credentials again."))
+     
+def get_programming_languages():
+    try:
+        with open(tmp_dir+"programming_languages.txt", "r") as f:
+            langs=f.read().split("\n")
+    except: 
+        langs=['python','java','cpp', "csharp", "c++", "C++", "c#", "C#", "C", "c", "sql", "SQL"]
+        with open(tmp_dir+"programming_languages.txt", "w") as f:
+            f.write('\n'.join(langs))
+    return langs
+
+def add_programming_language(lang:str):
+    langs=get_programming_languages()
+    if lang not in langs: 
+        with open(tmp_dir+"programming_languages.txt", "w") as f:
+            f.write('\n'.join(langs+[lang]))
+
+def programming_language_alias(lang:str):
+    if lang in ["c++", "C++"]: return "cpp"
+    elif lang in ["c#", "C#"]: return "csharp"
+    else: return lang
+
