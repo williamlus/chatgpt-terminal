@@ -152,6 +152,7 @@ def setup_theme():
 
 def ask_question(ques:list):
     ans=""
+    response=None
     try:
         response=openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=ques,stream=True)
         for r in response:
@@ -161,9 +162,11 @@ def ask_question(ques:list):
             elif "content" in delta:
                 ans+=delta["content"]
                 print(delta["content"], end="", flush=True)
-            else: break
+            else: continue
         print()
+        del response
     except Exception as e:
+        del response
         if len(ans)!=0:
             return ans
         else: raise e
