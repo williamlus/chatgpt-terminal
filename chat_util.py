@@ -164,9 +164,7 @@ def ask_question(ques:list):
                 print(delta["content"], end="", flush=True)
             else: continue
         print()
-        del response
     except Exception as e:
-        del response
         if len(ans)!=0:
             return ans
         else: raise e
