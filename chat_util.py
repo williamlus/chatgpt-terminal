@@ -154,7 +154,7 @@ def ask_question(ques:list):
     ans=""
     response=None
     try:
-        response=openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=ques,stream=True)
+        response=openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=ques,stream=True, timeout=10)
         for r in response:
             delta=r.choices[0].delta
             if "role" in delta:
