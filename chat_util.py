@@ -1,3 +1,5 @@
+import asyncio
+import multiprocessing
 import openai, os, time, random, re, sys, colorama, threading, tempfile
 import tkinter as tk
 from tkinter import filedialog
@@ -15,6 +17,7 @@ from key_bindings import get_key_bindings
 # Global variables ---------------------------------------------------------------
 
 is_insert_mode, response_completed, start_time, lang, translate, tmp_dir = None, None, None, None, None, None
+parent_conn, child_proc=None, None
 msg_arr_cache={}
 
 # Setup functions ---------------------------------------------------------------
@@ -42,6 +45,50 @@ def setup(reset=False):
 def setup_theme():
     colorama.init()
 
+def generator_proc(conn, org: str, api_key: str):
+    try:
+        openai.organization=org
+        openai.api_key=api_key
+        while(True):
+            ques=conn.recv()
+            # print("Question Received! ", end="", flush=True)
+            # print("Processing...", end="", flush=True)
+            # print("question:", type(ques), flush=True)
+            response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=ques, stream=True)
+            # print("Starting stream...", flush=True)
+            for r in response:
+                delta=r.choices[0].delta
+                conn.send(delta)
+            conn.send("done")
+    except Exception as e:
+        # print("In generator_proc Exception:"+str(e), flush=True)
+        conn.send(e)
+        # print("In generator_proc Exception: sent", flush=True)
+    finally:
+        # print("Closing connection...", flush=True)
+        conn.close()
+        # print("Connection closed.", flush=True)
+
+def setup_request_process():
+    global parent_conn, child_proc
+    # print grey text
+    # print(colors.get_color('darkgrey')+"Starting request process... "+colors.reset, end="", flush=True)
+    parent_conn, child_conn = multiprocessing.Pipe()
+    child_proc=multiprocessing.Process(target=generator_proc, args=(child_conn, openai.organization, openai.api_key))
+    child_proc.start()
+    print(colors.get_color('darkgrey')+"Request process started."+colors.reset, flush=True)
+
+def terminate_request_process(restart=False):
+    global parent_conn, child_proc
+    # print(colors.get_color('darkgrey')+"\nTerminating request process... "+colors.reset, end="", flush=True)
+    if child_proc!=None and child_proc.is_alive():
+        parent_conn.close()
+        child_proc.terminate()
+        print(colors.get_color('darkgrey')+"\nRequest process terminated."+colors.reset, flush=True)
+    parent_conn, child_proc=None, None
+    if restart:
+        setup_request_process()
+    
 def init_globals(language:str="en"):
     global is_insert_mode, response_completed, start_time, lang, translate, tmp_dir
     is_insert_mode=False
@@ -124,39 +171,33 @@ def print_msg_arr(msg_arr: list):
 # ChatGPT interface ---------------------------------------------------------------
 
 def ask_question(ques:list):
-    ans=""
+    global child_proc, parent_conn
+    ans, ex = "", None
     try:
-        # create a new thread to receive reponse 
-        response_arr=[None,]
-        def temp_f(ques):
-            response_arr[0]=openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=ques, stream=True)
-        response_thread = threading.Thread(target=temp_f, args=(ques,))
-        response_thread.start()
-        try:
-            while(response_arr[0]==None): 
-                response_thread.join(0.5) # wait for response and capture KeyboardInterrupt
-        except KeyboardInterrupt: # if the user presses Ctrl+C
-            print("Keyboard Interrupt, trying to request again...")
-            response_thread._stop()
-            raise Exception("TryAgain")
-        
-        response=response_arr[0]
-        for r in response:
-            delta=r.choices[0].delta
-            if "role" in delta:
+        if child_proc is None: setup_request_process()
+        parent_conn.send(ques)
+        while True:
+            delta = parent_conn.recv()
+            is_token=(type(delta) is openai.openai_object.OpenAIObject)
+            if is_token and "role" in delta:
                 print(colors.fg.blue+str(delta["role"])+": "+colors.reset+"", end="", flush=True)
-            elif "content" in delta:
+            elif is_token and "content" in delta:
                 ans+=delta["content"]
                 print(delta["content"], end="", flush=True)
-            else: continue
-        print()
-        
-    except Exception as e:
-        if len(ans)==0: raise e
+            elif is_token: continue
+            elif delta=="done": break
+            else:
+                print(colors.get_color('darkgrey')+"\nException raised in request process!"+colors.reset,flush=True)
+                terminate_request_process(restart=True)
+                raise delta
+        print()        
+    except Exception as e: ex=e
     except KeyboardInterrupt as e:
-        if len(ans)==0: raise e
+        terminate_request_process(restart=True)
+        ex=e
     finally:
         if len(ans.strip())!=0: return ans
+        elif ex is not None: raise ex
         else: raise Exception("TryAgain")
 
 def get_question():
@@ -217,13 +258,10 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 print(translate("Authentication failed. Please provide a valid API key."))
                 setup(reset=True)
             elif ("TryAgain" in str(e)): pass
-            else:
-                print(e)
-                break
+            else: print(e)
             continue
         except KeyboardInterrupt as e:
-            print("\n"+translate("Keyboard interrupt!"))
-            return msg_arr_whole
+            continue
         
         msg_arr.append({"role": "assistant", "content": response})
         msg_arr_whole.append({"role": "assistant", "content": response})

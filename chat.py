@@ -15,6 +15,7 @@ if __name__ == "__main__":
     setup_theme()
     init_globals(args.lang)
     setup()
+    setup_request_process()
     if args.resume:
         try:
             msg_arr=read_msg_arr()
@@ -31,4 +32,5 @@ if __name__ == "__main__":
         save_msg_arr(msg_arr)
     except:
         print(translate_util("Unable to save chat log.",lang=args.lang), flush=True)
+        terminate_request_process()
         sys.exit(0)
