@@ -27,7 +27,7 @@ def get_key_bindings():
             from_, to = sorted([buffer.cursor_position, buffer.selection_state.original_cursor_position])
             selected_text = buffer.text[from_:to]
             pyperclip.copy(selected_text)
-        else: sys.exit(0)
+        else: pass
     
     globals()['is_insert_mode'] = False
     
