@@ -137,7 +137,7 @@ def ask_question(ques:list):
                 response_thread.join(0.5) # wait for response and capture KeyboardInterrupt
         except KeyboardInterrupt: # if the user presses Ctrl+C
             print("Keyboard Interrupt, trying to request again...")
-            for thread in threading.enumerate(): thread._stop()
+            response_thread._stop()
             raise Exception("TryAgain")
         
         response=response_arr[0]
