@@ -261,7 +261,7 @@ def ask_path(op: str="save"):
 
 def save_msg_arr(msg_arr):
     file_path = ask_path(op="save")
-    if file_path=="": return
+    if file_path=="": raise Exception("No file selected")
     # save the array to the selected file location
     with open(file_path, 'w', encoding='utf-8') as f:
         for item in msg_arr:

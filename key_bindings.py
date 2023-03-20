@@ -28,31 +28,6 @@ def get_key_bindings():
             selected_text = buffer.text[from_:to]
             pyperclip.copy(selected_text)
         else: sys.exit(0)
-        
-    @bindings.add("right")
-    def _(event: KeyPressEvent):
-        buffer = event.app.current_buffer
-        selection = buffer.document.selection
-        if selection and selection.type == SelectionType.CHARACTERS:
-            buffer.document.selection.enter_shift_mode
-            tgt = max(buffer.cursor_position, buffer.selection_state.original_cursor_position)
-            buffer.exit_selection()
-            buffer.cursor_position = tgt
-        else:
-            try: buffer.cursor_position += 1
-            except Exception as e: pass
-            
-    @bindings.add("left")
-    def _(event: KeyPressEvent):
-        buffer = event.app.current_buffer
-        selection = buffer.document.selection
-        if selection and selection.type == SelectionType.CHARACTERS:
-            tgt = min(buffer.cursor_position, buffer.selection_state.original_cursor_position)
-            buffer.exit_selection()
-            buffer.cursor_position = tgt
-        else: 
-            try: buffer.cursor_position -= 1
-            except Exception as e: pass
     
     globals()['is_insert_mode'] = False
     
