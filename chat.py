@@ -32,5 +32,6 @@ if __name__ == "__main__":
         save_msg_arr(msg_arr)
     except:
         print(translate_util("Unable to save chat log.",lang=args.lang), flush=True)
+    finally:
         terminate_request_process()
         sys.exit(0)
