@@ -176,7 +176,7 @@ def ask_question(ques:list):
     global child_proc, parent_conn
     ans, ex = "", None
     try:
-        if child_proc is None: setup_request_process()
+        if child_proc is None or not child_proc.is_alive(): setup_request_process()
         parent_conn.send(ques)
         while True:
             delta = parent_conn.recv()
