@@ -60,7 +60,7 @@ def generator_proc(conn, org: str, api_key: str):
                   .ljust(len("Preparing for ans..."))+colors.reset, flush=True)
             for r in response:
                 delta=r.choices[0].delta
-                conn.send(delta)
+                if delta: conn.send(delta)
             conn.send("done")
     except Exception as e:
         # print("In generator_proc Exception:"+str(e), flush=True)
