@@ -78,7 +78,7 @@ def setup_request_process():
     parent_conn, child_conn = multiprocessing.Pipe()
     child_proc=multiprocessing.Process(target=generator_proc, args=(child_conn, openai.organization, openai.api_key))
     child_proc.start()
-    print(colors.get_color('darkgrey')+"Request process started."+colors.reset, flush=True)
+    print(colors.get_color('darkgrey')+"A new request process started."+colors.reset, flush=True)
 
 def terminate_request_process(restart=False):
     global parent_conn, child_proc
@@ -154,7 +154,8 @@ def cut_msg_arr(msg_arr:list, max_len:int):
         total_len+=len(processed_msg.split())+non_alnum_count//16
         if total_len>max_len: break
         msg_arr_left.insert(1, msg_arr[i])
-    print(f"Cutting {len(msg_arr)-len(msg_arr_left)} from {len(msg_arr)} messages...")
+    if len(msg_arr)-len(msg_arr_left)>0:
+        print(colors.get_color("darkgrey")+f"Cutting {len(msg_arr)-len(msg_arr_left)} from {len(msg_arr)} messages..."+colors.reset)
     return msg_arr_left
 
 def log_msg(role:str, msg:str, role_color:str="blue", msg_color:str="reset"):
@@ -247,11 +248,10 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
         try: response=ask_question(msg_arr)
         except Exception as e:
             if ("reduce the length of the messages" in str(e)):
-                print(translate('Max length of messages reached. Remove the earliest dialog.'))
+                print(colors.get_color("darkgrey")+translate('Max length of messages reached. Remove the earliest dialog.')+colors.reset)
                 msg_arr_left=cut_msg_arr(msg_arr, 4096)
                 if len(msg_arr)>=2 and len(msg_arr_left)==len(msg_arr):
-                    print(f"Cutting 2 from {len(msg_arr)} messages..."\
-                        .ljust(len(f"Waiting for response - (10.1s)")))
+                    print(colors.get_color("darkgrey")+f"Cutting 2 from {len(msg_arr)} messages..."+colors.reset)
                     msg_arr.pop(1)
                     if len(msg_arr)>=2: msg_arr.pop(1)
                 else: msg_arr=msg_arr_left
