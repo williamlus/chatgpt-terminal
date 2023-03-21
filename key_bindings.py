@@ -18,6 +18,7 @@ def get_key_bindings():
         b = event.app.current_buffer
         s = pyperclip.paste()
         b.insert_text(s)
+        b.cursor_position += len(s)
         
     @bindings.add("c-c")
     def _(event: KeyPressEvent):
