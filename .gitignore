@@ -7,3 +7,4 @@ auth
 chat.spec
 dist/
 build/
+compile.bat

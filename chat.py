@@ -6,7 +6,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--resume", action="store_true", default=False, help="Resume a previous chat session. (Default: False)")
     parser.add_argument("--customize_system", action="store_true", default=False, help="Customize the system prompt. (Default: False)")
-    parser.add_argument("-lang", type=str, default="cn", help="Language of the chat. (Default: cn)")
+    parser.add_argument("-lang", type=str, default="en", help="Language of the chat. (Default: en)")
     args = parser.parse_args()
     return args
 
