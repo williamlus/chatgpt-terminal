@@ -275,7 +275,10 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 continue
             elif input_text.startswith("-sys"):
                 sys_history = FileHistory(tmp_dir+"sys_history")
-                edit_sys=prompt(message="New system prompt: ", default=msg_arr[0]["content"],key_bindings=get_key_bindings(), history=sys_history)
+                edit_sys=prompt(message="New system prompt: ", default=msg_arr[0]["content"],
+                                key_bindings=get_key_bindings(), history=sys_history, 
+                                auto_suggest=AutoSuggestFromHistory(),
+                                style=Style.from_dict({'prompt': 'ansired','': 'ansiyellow',}))
                 msg_arr[0]["content"]=edit_sys
                 msg_arr_whole[0]["content"]=edit_sys
                 print("System prompt resets successfully!"); continue
