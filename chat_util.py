@@ -286,12 +286,12 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             elif input_text=="-h": 
                 print("q\t:quit\n"+
                       "r\t:refresh screen\n"+
-                      "-l\t:reset login\n"+
+                      "-l\t:reset login key\n"+
                       "-hf\t:half the context\n"+
                       "-cl\t:clear the context\n"+
-                      "-pop <n>:remove the first <n> messages\n"+
+                      "-pop <n>:remove the first <n> messages in context\n"+
                       "-sys\t:edit the system message\n"+
-                      "-ls\t:list the messages left\n"+
+                      "-ls\t:list the context messages left\n"+
                       "-h\t:list of commands")
                 continue
             
