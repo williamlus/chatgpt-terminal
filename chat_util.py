@@ -288,6 +288,11 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 print("Messages left: "+str(len(msg_arr)-1)+" / "+str(len(msg_arr_whole)-1)); continue
             elif input_text=="-key":
                 print_auth(); continue
+            elif input_text=="-rl":
+                msg_arr=msg_arr_whole[:]
+                print_msg_arr(msg_arr, max_lines=1, max_len_of_line=20, enum=True)
+                print("-"*20)
+                print("Messages left: "+str(len(msg_arr)-1)+" / "+str(len(msg_arr_whole)-1)); continue
             elif input_text=="-h": 
                 print("q\t:quit\n"+
                       "r\t:refresh screen\n"+
@@ -298,6 +303,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                       "-sys\t:edit the system message\n"+
                       "-ls\t:list the context messages left\n"+
                       "-key\t:show the login key\n"+
+                      "-rl\t:reload all chat messages to the context\n"+
                       "-h\t:list of commands")
                 continue
             
