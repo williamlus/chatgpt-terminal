@@ -274,9 +274,8 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                     if len(msg_arr)>=2: msg_arr.pop(1)
                 continue
             elif input_text.startswith("-sys"):
-                sys_history = FileHistory(tmp_dir+"sys_history")
                 edit_sys=prompt(message="New system prompt: ", default=msg_arr[0]["content"],
-                                key_bindings=get_key_bindings(), history=sys_history, 
+                                key_bindings=get_key_bindings(), history=FileHistory(tmp_dir+"sys_history"), 
                                 auto_suggest=AutoSuggestFromHistory(),
                                 style=Style.from_dict({'prompt': 'ansired','': 'ansiyellow',}))
                 msg_arr[0]["content"]=edit_sys
@@ -293,18 +292,32 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 print_msg_arr(msg_arr, max_lines=1, max_len_of_line=20, enum=True)
                 print("-"*20)
                 print("Messages left: "+str(len(msg_arr)-1)+" / "+str(len(msg_arr_whole)-1)); continue
+            elif input_text=="-pwd":
+                save_path=get_recent_save_path()
+                if not (os.path.exists(save_path) and os.path.isdir(save_path)): save_path=os.getcwd()
+                pwd=prompt("Specify working directory: ", default=save_path, key_bindings=get_key_bindings(), 
+                       style=Style.from_dict({'prompt': 'ansired','': 'ansiyellow',}),
+                       history=FileHistory(tmp_dir+"path_history"))
+                if os.path.exists(pwd) and os.path.isdir(pwd): record_recent_save_path(pwd); print("Directory changed!")
+                else: 
+                    try: os.makedirs(pwd); record_recent_save_path(pwd); print("Directory created!")
+                    except: print("Invalid path!")
+                continue
             elif input_text=="-h": 
                 print("q\t:quit\n"+
                       "r\t:refresh screen\n"+
-                      "-l\t:reset login key\n"+
-                      "-hf\t:half the context\n"+
                       "-cl\t:clear the context\n"+
-                      "-pop <n>:remove the first <n> messages in context\n"+
-                      "-sys\t:edit the system message\n"+
-                      "-ls\t:list the context messages left\n"+
+                      "-h\t:list of commands"+
+                      "-hf\t:half the context\n"+
                       "-key\t:show the login key\n"+
+                      "-l\t:reset login key\n"+
+                      "-ls\t:list the context messages left\n"+
+                      "-pop <n>:remove the first <n> messages in context\n"+
+                      "-pwd\t:change the working directory\n"+
                       "-rl\t:reload all chat messages to the context\n"+
-                      "-h\t:list of commands")
+                      "-sys\t:edit the system message\n"+
+                      ""
+                )
                 continue
             
             msg_arr.append({"role": "user", "content": input_text})
@@ -356,15 +369,32 @@ def ask_path(op: str="save"):
     root = tk.Tk()
     root.withdraw()
     # open a file dialog box and allow the user to select a file location
+    pwd=get_recent_save_path()
+    folder_exists=(os.path.exists(pwd) and os.path.isdir(pwd))
     if op=="save":
-        file_path = filedialog.asksaveasfilename(defaultextension=".txt")
+        if folder_exists: file_path = filedialog.asksaveasfilename(defaultextension=".txt", initialdir=pwd)
+        else: file_path = filedialog.asksaveasfilename(defaultextension=".txt")
     elif op=="open":
-        file_path = filedialog.askopenfilename(defaultextension=".txt")
+        if folder_exists: file_path = filedialog.askopenfilename(defaultextension=".txt", initialdir=pwd)
+        else: file_path = filedialog.askopenfilename(defaultextension=".txt")
     else:
         raise ValueError("op must be either 'save' or 'open'")
     # close the window
     root.destroy()
     return file_path
+
+def get_recent_save_path():
+    save_path=tmp_dir+"recent_save_path.txt"
+    if os.path.exists(save_path):
+        with open(save_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    return ""
+
+def record_recent_save_path(file_path):
+    save_path=tmp_dir+"recent_save_path.txt"
+    with open(save_path, 'w', encoding='utf-8') as f:
+        f.write(file_path)
+    
 
 def save_msg_arr(msg_arr):
     file_path = ask_path(op="save")
@@ -373,17 +403,19 @@ def save_msg_arr(msg_arr):
     with open(file_path, 'w', encoding='utf-8') as f:
         for item in msg_arr:
             f.write(str(item) + '\n')
+    record_recent_save_path(os.path.dirname(file_path))
     print(translate("Chat is saved to")+f" {file_path}")
 
 def read_msg_arr():
     file_path = ask_path(op="open")
     # read the array from the selected file location
+    my_list=[]
     with open(file_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
-        my_list = []
         for line in lines:
             my_list.append(eval(line.strip())) # Use eval function to convert string to object
-        return my_list
+    record_recent_save_path(os.path.dirname(file_path))
+    return my_list
    
 def record_auth(org:str, api_key:str):
     with open(tmp_dir+"auth", "w") as f:
