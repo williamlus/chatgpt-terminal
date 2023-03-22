@@ -1,4 +1,4 @@
-import multiprocessing
+import multiprocessing, threading
 import openai, os, time, random, re, sys, colorama, tempfile
 import tkinter as tk
 from tkinter import filedialog
@@ -63,8 +63,10 @@ def generator_proc(conn, org: str, api_key: str):
             conn.send("done")
     except Exception as e:
         # print("In generator_proc Exception:"+str(e), flush=True)
-        conn.send(e)
+        try: conn.send(e)
+        except: pass
         # print("In generator_proc Exception: sent", flush=True)
+    except: pass
     finally:
         # print("Closing connection...", flush=True)
         conn.close()
@@ -441,7 +443,7 @@ def record_recent_save_path(file_path):
 
 def save_msg_arr(msg_arr):
     global current_file_path
-    if os.path.exists(current_file_path) and os.path.isfile(current_file_path): file_path=current_file_path
+    if current_file_path!=None and os.path.exists(current_file_path) and os.path.isfile(current_file_path): file_path=current_file_path
     else: file_path = ask_path(op="save")
     if file_path=="": raise Exception("No file selected")
     # save the array to the selected file location

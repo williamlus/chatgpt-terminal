@@ -30,8 +30,9 @@ if __name__ == "__main__":
     print(translate_util("Save the chat log to a file if you want to resume the chat later.",lang=args.lang), flush=True)
     try:
         save_msg_arr(msg_arr)
-    except:
+    except Exception as e:
         print(translate_util("Unable to save chat log.",lang=args.lang), flush=True)
+    except: pass
     finally:
         terminate_request_process()
         sys.exit(0)
