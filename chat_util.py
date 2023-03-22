@@ -229,7 +229,7 @@ def get_question():
     input_text = ""
     while (input_text.strip()==""):
         try:
-            input_text = prompt(translate("Enter your question (-h for help): "), style=custom_style, \
+            input_text = prompt(translate("Enter your question (-h for command list): "), style=custom_style, \
                 history=history, key_bindings=get_key_bindings(), auto_suggest=AutoSuggestFromHistory())
         except KeyboardInterrupt as e:
             print(translate("Exiting..."))
@@ -292,7 +292,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                       "-pop <n>:remove the first <n> messages\n"+
                       "-sys\t:edit the system message\n"+
                       "-ls\t:list the messages left\n"+
-                      "-h\t:help")
+                      "-h\t:list of commands")
                 continue
             
             msg_arr.append({"role": "user", "content": input_text})
