@@ -283,6 +283,8 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 print_msg_arr(msg_arr, max_lines=6, max_len_of_line=100, enum=True)
                 print("-"*20)
                 print("Messages left: "+str(len(msg_arr)-1)+" / "+str(len(msg_arr_whole)-1)); continue
+            elif input_text=="-key":
+                print_auth(); continue
             elif input_text=="-h": 
                 print("q\t:quit\n"+
                       "r\t:refresh screen\n"+
@@ -292,6 +294,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                       "-pop <n>:remove the first <n> messages in context\n"+
                       "-sys\t:edit the system message\n"+
                       "-ls\t:list the context messages left\n"+
+                      "-key\t:show the login key\n"+
                       "-h\t:list of commands")
                 continue
             
@@ -378,7 +381,11 @@ def record_auth(org:str, api_key:str):
         f.write(f"{org}\n{api_key}")
     print(translate("Authentication successful. Your credentials are saved to")+f" {os.path.normpath(tmp_dir+'auth')}.")
     print(translate("You can now run the program without entering your credentials again."))
-     
+
+def print_auth():
+    try: f=open(tempfile.gettempdir()+"/chatgpt-cache/"+"auth","r"); print(f.read()); f.close()
+    except: print("No authentication record found.")
+    
 def get_programming_languages():
     try:
         with open(tmp_dir+"programming_languages.txt", "r") as f:
