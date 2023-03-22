@@ -22,8 +22,8 @@ msg_arr_cache={}
 
 # Setup functions ---------------------------------------------------------------
 
-def setup(reset=False):
-    if os.path.exists(tmp_dir+"auth") and not reset:
+def setup(reset=False, iters=5):
+    if os.path.exists(tmp_dir+"auth") and not (reset and iters>0):
         try:
             with open(tmp_dir+"auth", "r") as f:
                 org,key=f.read().split("\n")
@@ -40,7 +40,7 @@ def setup(reset=False):
         return
     else:
         print(translate("Authentication failed. Please try again."))
-        setup(reset=True)
+        setup(reset=True, iters=iters-1)
 
 def setup_theme():
     colorama.init()
@@ -240,7 +240,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             input_text=get_question()
             if input_text=="q": break
             elif input_text=="r": refresh(msg_arr_whole); continue
-            elif input_text=="-l": setup(reset=True); continue
+            elif input_text=="-l": setup(reset=True, iters=1); continue
                 
             msg_arr.append({"role": "user", "content": input_text})
             msg_arr_whole.append({"role": "user", "content": input_text})
@@ -258,7 +258,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             elif ("Rate limit reached for" in str(e)): time.sleep(1)
             elif ("Incorrect API key provided" in str(e)):
                 print(translate("Authentication failed. Please provide a valid API key."))
-                setup(reset=True)
+                setup(reset=True, iters=1)
             elif ("TryAgain" in str(e)): pass
             else: print(e)
             continue
