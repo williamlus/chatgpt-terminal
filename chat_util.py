@@ -297,6 +297,8 @@ def ask_path(op: str="save"):
         file_path = filedialog.askopenfilename(defaultextension=".txt")
     else:
         raise ValueError("op must be either 'save' or 'open'")
+    # close the window
+    root.destroy()
     return file_path
 
 def save_msg_arr(msg_arr):
