@@ -166,10 +166,27 @@ def log_msg(role:str, msg:str, role_color:str="blue", msg_color:str="reset"):
     print(colors.get_color(role_color)+role+": ", end='', flush=True)
     print((colors.get_color(msg_color)+msg_colored).strip(), flush=True)
 
-def print_msg_arr(msg_arr: list):
-    for msg in msg_arr:
-        if msg['role']=="user": log_msg(msg['role'], msg['content'], role_color="lightred", msg_color="orange")
-        else: log_msg(msg['role'], msg['content'], role_color="blue")
+def print_msg_arr(msg_arr: list, max_lines=-1, max_len_of_line=-1, enum=False):
+    for idx, msg in enumerate(msg_arr):
+        content=msg["content"]
+        content_lines=content.split("\n")
+        # keep the first n/2 and the last n/2 lines, keep the first n/2 and the last n/2 words
+        if max_lines>0 and len(content_lines)>max_lines:
+            content_lines=content_lines[:max_lines//2]+\
+                (["..."] if max_lines<len(content_lines) else [])+\
+                    content_lines[-max_lines//2:]
+        if max_len_of_line>0:
+            content_lines=[(line[:max_len_of_line//2]+\
+                (" ... " if max_len_of_line<len(line) else "")+\
+                    line[-max_len_of_line//2:] \
+                        if len(line)>max_len_of_line else line) for line in content_lines]
+        content="\n".join(content_lines)
+        if msg['role']=="user":
+            if enum: print(colors.get_color("pink")+str(idx)+". "+colors.reset, end="") 
+            log_msg(msg['role'], content, role_color="lightred", msg_color="orange")
+        else:
+            if enum: print(colors.get_color("pink")+str(idx)+". "+colors.reset, end="")  
+            log_msg(msg['role'], content, role_color="blue")
 
 # ChatGPT interface ---------------------------------------------------------------
 
@@ -249,13 +266,21 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             elif input_text=="-cl":
                 # clear the msg_arr
                 msg_arr=[msg_arr[0],]; continue
+            elif input_text=="-pop":
+                if len(msg_arr)>=2: msg_arr.pop(1); continue
             elif input_text.startswith("-pop") and len(input_text.split())==2 and input_text.split()[-1].isdigit():
                 pop_num=int(input_text.split()[-1])
                 for _ in range(pop_num):
                     if len(msg_arr)>=2: msg_arr.pop(1)
                 continue
+            elif input_text.startswith("-sys"):
+                sys_history = FileHistory(tmp_dir+"sys_history")
+                edit_sys=prompt(message="New system prompt: ", default=msg_arr[0]["content"],key_bindings=get_key_bindings(), history=sys_history)
+                msg_arr[0]["content"]=edit_sys
+                msg_arr_whole[0]["content"]=edit_sys
+                print("System prompt resets successfully!"); continue
             elif input_text=="-ls":
-                print_msg_arr(msg_arr)
+                print_msg_arr(msg_arr, max_lines=6, max_len_of_line=100, enum=True)
                 print("-"*20)
                 print("Messages left: "+str(len(msg_arr)-1)+" / "+str(len(msg_arr_whole)-1)); continue
             elif input_text=="-h": 
@@ -265,6 +290,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                       "-hf\t:half the context\n"+
                       "-cl\t:clear the context\n"+
                       "-pop <n>:remove the first <n> messages\n"+
+                      "-sys\t:edit the system message\n"+
                       "-ls\t:list the messages left\n"+
                       "-h\t:help")
                 continue
