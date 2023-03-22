@@ -257,7 +257,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
     input_text=""
     while(input_text!="q"):
         if msg_arr[-1]['role']!="user":
-            input_text=get_question().strip()
+            input_text=get_question().rstrip()
             if input_text=="q": break
             elif input_text=="r": refresh(msg_arr_whole); continue
             elif input_text=="-l": setup(reset=True, iters=1); continue
@@ -441,7 +441,8 @@ def record_recent_save_path(file_path):
 
 def save_msg_arr(msg_arr):
     global current_file_path
-    file_path = ask_path(op="save")
+    if os.path.exists(current_file_path) and os.path.isfile(current_file_path): file_path=current_file_path
+    else: file_path = ask_path(op="save")
     if file_path=="": raise Exception("No file selected")
     # save the array to the selected file location
     with open(file_path, 'w', encoding='utf-8') as f:
@@ -449,7 +450,7 @@ def save_msg_arr(msg_arr):
             f.write(str(item) + '\n')
     record_recent_save_path(os.path.dirname(file_path))
     current_file_path=file_path
-    print(translate("Chat is saved to")+f" {file_path}")
+    print(translate("Chat is saved to")+f" {file_path}!")
 
 def read_msg_arr():
     global current_file_path
