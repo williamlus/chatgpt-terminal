@@ -1,6 +1,5 @@
-import asyncio
 import multiprocessing
-import openai, os, time, random, re, sys, colorama, threading, tempfile
+import openai, os, time, random, re, sys, colorama, tempfile
 import tkinter as tk
 from tkinter import filedialog
 from prompt_toolkit import prompt
@@ -16,7 +15,7 @@ from key_bindings import get_key_bindings
 
 # Global variables ---------------------------------------------------------------
 
-is_insert_mode, response_completed, start_time, lang, translate, tmp_dir = None, None, None, None, None, None
+is_insert_mode, response_completed, start_time, lang, translate, tmp_dir, current_file_path = None, None, None, None, None, None, None
 parent_conn, child_proc=None, None
 msg_arr_cache={}
 
@@ -229,7 +228,7 @@ def get_question():
     input_text = ""
     while (input_text.strip()==""):
         try:
-            input_text = prompt(translate("Enter your question (-h for command list): "), style=custom_style, \
+            input_text = prompt(translate("Enter your question (h for command list): "), style=custom_style, \
                 history=history, key_bindings=get_key_bindings(), auto_suggest=AutoSuggestFromHistory())
         except KeyboardInterrupt as e:
             print(translate("Exiting..."))
@@ -244,6 +243,8 @@ def get_question():
 # Chat functions ---------------------------------------------------------------
 
 def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
+    global current_file_path
+    
     if len(msg_arr_whole)==0: # start a new chat
         system_msg="You are a helpful assistant."
         print(translate("Default system prompt:")+f" {system_msg}")
@@ -263,7 +264,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             elif input_text=="-hf":
                 # half the msg_arr
                 msg_arr=[msg_arr[0],]+([] if len(msg_arr)==1 else msg_arr[len(msg_arr)//2:]); continue
-            elif input_text=="-cl":
+            elif input_text=="-clc":
                 # clear the msg_arr
                 msg_arr=[msg_arr[0],]; continue
             elif input_text=="-pop":
@@ -303,18 +304,60 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                     try: os.makedirs(pwd); record_recent_save_path(pwd); print("Directory created!")
                     except: print("Invalid path!")
                 continue
-            elif input_text=="-h": 
-                print("q\t:quit\n"+
+            elif input_text=="-lsp":
+                save_path=get_recent_save_path()
+                if not (os.path.exists(save_path) and os.path.isdir(save_path)): save_path=os.getcwd()
+                # list the files in the working directory
+                print(os.listdir(save_path)); continue
+            elif input_text=="q!":
+                print("Exiting...")
+                terminate_request_process()
+                sys.exit(0)
+            elif input_text.startswith("-s") and len(input_text.split())==2:
+                save_path=get_recent_save_path()
+                if not (os.path.exists(save_path) and os.path.isdir(save_path)): save_path=os.getcwd()
+                file_name=input_text.split()[-1]
+                file_path=os.path.join(save_path, file_name)
+                try:
+                    if os.path.exists(file_path):
+                        if os.path.isdir(file_path): print("File exists but is a directory!"); continue
+                        else:
+                            print("File exists! Overwrite? (y/n): ", end="")
+                            if input().lower()!="y": continue
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    with open(file_path, "w") as f:
+                        for item in msg_arr_whole: f.write(str(item) + '\n')
+                    record_recent_save_path(os.path.dirname(file_path))
+                    current_file_path=file_path
+                    print(f"Saved successfully to {file_path}!")
+                except: print("Save failed!")
+                continue
+            elif input_text=="-s":
+                if current_file_path:
+                    try:
+                        with open(current_file_path, "w") as f:
+                            for item in msg_arr_whole: f.write(str(item) + '\n')
+                        record_recent_save_path(os.path.dirname(current_file_path))
+                        print(f"Saved successfully to {current_file_path}!")
+                    except: print("Save failed!")
+                else: print("No file path specified!")
+                continue      
+            elif input_text=="h": 
+                print(
+                      "h\t:list of commands\n"+
+                      "q\t:quit with saving\n"+
+                      "q!\t:quit without saving (Ctrl-D)\n"+
                       "r\t:refresh screen\n"+
-                      "-cl\t:clear the context\n"+
-                      "-h\t:list of commands"+
+                      "-clc\t:clear the context\n"+
                       "-hf\t:half the context\n"+
                       "-key\t:show the login key\n"+
                       "-l\t:reset login key\n"+
                       "-ls\t:list the context messages left\n"+
+                      "-lsp\t:list the files in the working directory\n"+
                       "-pop <n>:remove the first <n> messages in context\n"+
                       "-pwd\t:change the working directory\n"+
                       "-rl\t:reload all chat messages to the context\n"+
+                      "-s <fp>\t:save the chat to a file path <fp> relative to the current working dir\n"
                       "-sys\t:edit the system message\n"+
                       ""
                 )
@@ -397,6 +440,7 @@ def record_recent_save_path(file_path):
     
 
 def save_msg_arr(msg_arr):
+    global current_file_path
     file_path = ask_path(op="save")
     if file_path=="": raise Exception("No file selected")
     # save the array to the selected file location
@@ -404,9 +448,11 @@ def save_msg_arr(msg_arr):
         for item in msg_arr:
             f.write(str(item) + '\n')
     record_recent_save_path(os.path.dirname(file_path))
+    current_file_path=file_path
     print(translate("Chat is saved to")+f" {file_path}")
 
 def read_msg_arr():
+    global current_file_path
     file_path = ask_path(op="open")
     # read the array from the selected file location
     my_list=[]
@@ -415,6 +461,7 @@ def read_msg_arr():
         for line in lines:
             my_list.append(eval(line.strip())) # Use eval function to convert string to object
     record_recent_save_path(os.path.dirname(file_path))
+    current_file_path=file_path
     return my_list
    
 def record_auth(org:str, api_key:str):
