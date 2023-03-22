@@ -259,7 +259,14 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 print("-"*20)
                 print("Messages left: "+str(len(msg_arr)-1)+" / "+str(len(msg_arr_whole)-1)); continue
             elif input_text=="-h": 
-                print("q: quit, r: refresh screen, -l: reset login, -hf: half the context, -cl: clear the context, -pop <num>: remove the first <num> messages, -ls: list the messages left, -h: help")
+                print("q\t:quit\n"+
+                      "r\t:refresh screen\n"+
+                      "-l\t:reset login\n"+
+                      "-hf\t:half the context\n"+
+                      "-cl\t:clear the context\n"+
+                      "-pop <n>:remove the first <n> messages\n"+
+                      "-ls\t:list the messages left\n"+
+                      "-h\t:help")
                 continue
             
             msg_arr.append({"role": "user", "content": input_text})
