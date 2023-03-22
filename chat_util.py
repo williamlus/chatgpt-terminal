@@ -216,9 +216,11 @@ def get_question():
                 history=history, key_bindings=get_key_bindings(), auto_suggest=AutoSuggestFromHistory())
         except KeyboardInterrupt as e:
             print(translate("Exiting..."))
+            terminate_request_process()
             sys.exit(0)
         except EOFError as e:
             print(translate("Exiting..."))
+            terminate_request_process()
             sys.exit(0)
     return input_text
 
