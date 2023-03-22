@@ -212,7 +212,7 @@ def get_question():
     input_text = ""
     while (input_text.strip()==""):
         try:
-            input_text = prompt(translate("Enter your question (or q to quit, r to refresh): "), style=custom_style, \
+            input_text = prompt(translate("Enter your question (-h for help): "), style=custom_style, \
                 history=history, key_bindings=get_key_bindings(), auto_suggest=AutoSuggestFromHistory())
         except KeyboardInterrupt as e:
             print(translate("Exiting..."))
@@ -237,13 +237,31 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
         msg_arr_whole.append({"role": "system", "content": system_msg})
         
     input_text=""
-    while(input_text.lower()!="q"):
+    while(input_text!="q"):
         if msg_arr[-1]['role']!="user":
             input_text=get_question()
             if input_text=="q": break
             elif input_text=="r": refresh(msg_arr_whole); continue
             elif input_text=="-l": setup(reset=True, iters=1); continue
-                
+            elif input_text=="-hf":
+                # half the msg_arr
+                msg_arr=[msg_arr[0],]+([] if len(msg_arr)==1 else msg_arr[len(msg_arr)//2:]); continue
+            elif input_text=="-cl":
+                # clear the msg_arr
+                msg_arr=[msg_arr[0],]; continue
+            elif input_text.startswith("-pop") and len(input_text.split())==2 and input_text.split()[-1].isdigit():
+                pop_num=int(input_text.split()[-1])
+                for _ in range(pop_num):
+                    if len(msg_arr)>=2: msg_arr.pop(1)
+                continue
+            elif input_text=="-ls":
+                print_msg_arr(msg_arr)
+                print("-"*20)
+                print("Messages left: "+str(len(msg_arr)-1)+" / "+str(len(msg_arr_whole)-1)); continue
+            elif input_text=="-h": 
+                print("q: quit, r: refresh screen, -l: reset login, -hf: half the context, -cl: clear the context, -pop <num>: remove the first <num> messages, -ls: list the messages left, -h: help")
+                continue
+            
             msg_arr.append({"role": "user", "content": input_text})
             msg_arr_whole.append({"role": "user", "content": input_text})
         
