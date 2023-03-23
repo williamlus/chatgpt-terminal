@@ -1,2 +1,2 @@
 cd "$(dirname "$0")"
-python3 chat.py --resume
+python3 chat.py --resume $@

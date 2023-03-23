@@ -1,7 +1,9 @@
 import multiprocessing, threading
 import openai, os, time, random, re, sys, colorama, tempfile
-import tkinter as tk
-from tkinter import filedialog
+try: 
+    import tkinter as tk
+    from tkinter import filedialog
+except: import tk
 from prompt_toolkit import prompt
 from prompt_toolkit.styles import Style
 from prompt_toolkit.history import FileHistory
@@ -32,8 +34,8 @@ def setup(reset=False, iters=5):
         except: pass
             
     history = FileHistory(tmp_dir+".auth") # authentification history
-    openai.organization=prompt(translate("Enter your organization:"),history=history, key_bindings=get_key_bindings())
-    openai.api_key=prompt(translate("Enter your OpenAI API key:"),history=history, key_bindings=get_key_bindings())
+    openai.organization=prompt(translate("Enter your organization: "),history=history, key_bindings=get_key_bindings())
+    openai.api_key=prompt(translate("Enter your OpenAI API key: "),history=history, key_bindings=get_key_bindings())
     if test_api_key():
         record_auth(openai.organization, openai.api_key) 
         return

@@ -1,2 +1,2 @@
 cd "$(dirname "$0")"
-python3 chat.py
+python3 chat.py $@

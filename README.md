@@ -14,6 +14,7 @@ Run `chat.bat` to start a new chat, or `chatr.bat` to resume a chat.
 ### For Linux/MacOS users:
 1. First give permission to .sh files by running `chmod +x chat.sh` and `chmod +x chatr.sh`.
 2. Run `./chat.sh` to start a new chat, or `./chatr.sh` to resume a chat.
+3. If GUI (tkinter) is not available in your OS, run `./chat.sh --nogui` and `./chatr.sh --nogui` instead.
 
 ## Useful Shortcuts:
 1. Press  `ctrl-E` or `→` to insert a suggestion, `alt-F` to insert the first suggested word.
