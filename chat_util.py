@@ -79,7 +79,7 @@ def setup_request_process():
     # print grey text
     # print(colors.get_color('darkgrey')+"Starting request process... "+colors.reset, end="", flush=True)
     parent_conn, child_conn = multiprocessing.Pipe()
-    child_proc=multiprocessing.Process(target=generator_proc, args=(child_conn, openai.organization, openai.api_key))
+    child_proc=multiprocessing.Process(target=generator_proc, args=(child_conn, openai.organization, openai.api_key), daemon=True)
     child_proc.start()
     print(colors.get_color('darkgrey')+"A new request process started."+colors.reset, flush=True)
 
