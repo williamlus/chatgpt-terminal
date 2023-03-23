@@ -6,6 +6,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--resume", action="store_true", default=False, help="Resume a previous chat session. (Default: False)")
     parser.add_argument("--customize_system", action="store_true", default=False, help="Customize the system prompt. (Default: False)")
+    parser.add_argument("--nogui", action="store_true", default=False, help="Run the chatbot without GUI. (Default: False)")
     parser.add_argument("-lang", type=str, default="en", help="Language of the chat. (Default: en)")
     args = parser.parse_args()
     return args
@@ -16,6 +17,7 @@ if __name__ == "__main__":
     init_globals(args.lang)
     setup()
     setup_request_process()
+    if args.nogui: disable_gui()
     if args.resume:
         try:
             msg_arr=read_msg_arr()

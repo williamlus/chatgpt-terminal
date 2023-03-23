@@ -15,7 +15,7 @@ from key_bindings import get_key_bindings
 
 # Global variables ---------------------------------------------------------------
 
-is_insert_mode, response_completed, start_time, lang, translate, tmp_dir, current_file_path = None, None, None, None, None, None, None
+is_insert_mode, response_completed, start_time, lang, translate, tmp_dir, current_file_path, usegui = None, None, None, None, None, None, None, None
 parent_conn, child_proc=None, None
 msg_arr_cache={}
 
@@ -93,13 +93,14 @@ def terminate_request_process(restart=False):
         setup_request_process()
     
 def init_globals(language:str="en"):
-    global is_insert_mode, response_completed, start_time, lang, translate, tmp_dir
+    global is_insert_mode, response_completed, start_time, lang, translate, tmp_dir, usegui
     is_insert_mode=False
     response_completed=""
     start_time=None
     lang=language
     translate=lambda msg: translate_util(msg, lang=lang)
     tmp_dir = tempfile.gettempdir()
+    usegui=True
     if not os.path.exists(tmp_dir+"/chatgpt-cache"): os.mkdir(tmp_dir+"/chatgpt-cache")
     tmp_dir=tmp_dir+"/chatgpt-cache/"
 
@@ -409,7 +410,30 @@ def refresh(msg_arr_whole:list):
 
 # File I/O functions ---------------------------------------------------------------
 
+def disable_gui():
+    # disable GUI
+    global usegui
+    usegui=False
+
 def ask_path(op: str="save"):
+    global usegui
+    while(not usegui):
+        save_path=get_recent_save_path()
+        if not (os.path.exists(save_path) and os.path.isdir(save_path)): save_path=os.getcwd()
+        file_path=prompt("Specify the path of the chat: ", default=save_path, key_bindings=get_key_bindings(), 
+                       style=Style.from_dict({'prompt': 'ansired','': 'ansiyellow',}),
+                       history=FileHistory(tmp_dir+"path_history"))
+        try:
+            if os.path.exists(file_path):
+                if os.path.isdir(file_path): print("File exists but is a directory!"); continue
+                else:
+                    if op=="open": return file_path
+                    print("File exists! Overwrite? (y/n): ", end="")
+                    if input().lower()!="y": continue
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+        except: print("Save failed!"); continue
+                
     # create a Tkinter root window
     root = tk.Tk()
     root.withdraw()
