@@ -6,3 +6,4 @@ alive-progress
 pyperclip
 pygments
 regex
+pyinstaller

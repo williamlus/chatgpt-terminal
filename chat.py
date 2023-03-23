@@ -1,4 +1,4 @@
-import argparse
+import argparse, multiprocessing
 from chat_util import *
 from translator import translate_util
 
@@ -12,6 +12,7 @@ def parse_args():
     return args
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     args=parse_args()
     setup_theme()
     init_globals(args.lang)
