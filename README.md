@@ -16,6 +16,9 @@ Run `chat.bat` to start a new chat, or `chatr.bat` to resume a chat.
 2. Run `./chat.sh` to start a new chat, or `./chatr.sh` to resume a chat.
 3. If GUI (tkinter) is not available in your OS, run `./chat.sh --nogui` and `./chatr.sh --nogui` instead.
 
+## Installation:
+To compile the program into an executable file, run `compile.bat`. You will find `chat` or `chat.exe` in `./dist/` after compilation.
+
 ## Useful Shortcuts:
 1. Press  `ctrl-E` or `→` to insert a suggestion, `alt-F` to insert the first suggested word.
 2. Press `ctrl-C` to copy the selected text, `ctrl-D` to terminate the program.
