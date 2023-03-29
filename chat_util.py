@@ -313,7 +313,17 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 save_path=get_recent_save_path()
                 if not (os.path.exists(save_path) and os.path.isdir(save_path)): save_path=os.getcwd()
                 # list the files in the working directory
-                print(os.listdir(save_path)); continue
+                paths=os.listdir(save_path)
+                folder_names, file_names=[], []
+                # color the paths by folder or file
+                for path in paths:
+                    fullpath=os.path.join(save_path, path)
+                    if os.path.isdir(fullpath): 
+                        folder_names.append(colors.get_color('lightblue')+path+colors.reset)
+                    else: 
+                        file_names.append(path)
+                paths=sorted(folder_names)+sorted(file_names)
+                print("  ".join(paths)); continue
             elif input_text=="q!":
                 print("Exiting...")
                 terminate_request_process()
