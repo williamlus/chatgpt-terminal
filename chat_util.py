@@ -359,7 +359,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 continue      
             elif input_text=="h": 
                 print(
-                      "h\t:list of commands\n"+
+                      translate("h\t:list of commands\n"+
                       "q\t:quit with saving\n"+
                       "q!\t:quit without saving (Ctrl-D)\n"+
                       "r\t:refresh screen\n"+
@@ -374,7 +374,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                       "-rl\t:reload all chat messages to the context\n"+
                       "-s <fp>\t:save the chat to a file path <fp> relative to the current working dir\n"
                       "-sys\t:edit the system message\n"+
-                      ""
+                      "")
                 )
                 continue
             
