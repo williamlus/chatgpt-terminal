@@ -266,6 +266,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             if input_text=="q": break
             elif input_text=="r": refresh(msg_arr_whole); continue
             elif input_text=="-l": setup(reset=True, iters=1); continue
+            elif input_text=="-cache": print(tmp_dir); continue                
             elif input_text=="-hf":
                 # half the msg_arr
                 msg_arr=[msg_arr[0],]+([] if len(msg_arr)==1 else msg_arr[len(msg_arr)//2:]); continue
@@ -374,7 +375,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                       "-rl\t:reload all chat messages to the context\n"+
                       "-s <fp>\t:save the chat to a file path <fp> relative to the current working dir\n"
                       "-sys\t:edit the system message\n"+
-                      "")
+                      "-cache: show the cache path\n")
                 )
                 continue
             
