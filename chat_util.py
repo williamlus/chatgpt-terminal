@@ -369,12 +369,15 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             elif input_text=="-model":
                 print(f"Current model: {model_name}"); continue
             elif input_text.startswith("-model ") and len(input_text.strip().split())==2:
-                tmp=input_text.strip().split()[-1]
+                tmp=input_text.strip().split()[-1].strip()
+                if tmp.lower() in ['3', '3.5', 'chat', 'chatgpt']: 
+                    tmp='gpt-3.5-turbo'
+                elif tmp=='4': tmp='gpt-4'
                 if tmp in ['gpt-3.5-turbo', 'gpt-4'] and model_name!=tmp:
                     model_name=tmp
                     terminate_request_process(restart=True)
                     print(f"Model changed to {model_name}!")
-                else: print("Invalid model name! Use gpt-3.5-turbo or gpt-4!")
+                elif tmp not in ['gpt-3.5-turbo', 'gpt-4']: print("Invalid model name! Use gpt-3.5-turbo or gpt-4!")
                 continue
             elif input_text=="h": 
                 print(
