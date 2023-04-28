@@ -20,6 +20,8 @@ from key_bindings import get_key_bindings
 is_insert_mode, response_completed, start_time, lang, translate, tmp_dir, current_file_path, usegui = None, None, None, None, None, None, None, None
 parent_conn, child_proc=None, None
 msg_arr_cache={}
+model_name="gpt-3.5-turbo"
+chat_mode=True
 
 # Setup functions ---------------------------------------------------------------
 
@@ -46,7 +48,7 @@ def setup(reset=False, iters=5):
 def setup_theme():
     colorama.init()
 
-def generator_proc(conn, org: str, api_key: str):
+def generator_proc(conn, org: str, api_key: str, model_name: str):
     try:
         openai.organization=org
         openai.api_key=api_key
@@ -55,7 +57,7 @@ def generator_proc(conn, org: str, api_key: str):
             # print("Question Received! ", end="", flush=True)
             # print("Processing...", end="", flush=True)
             print(colors.get_color("darkgrey")+"Preparing for ans..."+colors.reset, end="", flush=True)
-            response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=ques, stream=True)
+            response = openai.ChatCompletion.create(model=model_name, messages=ques, stream=True)
             print("\b"*len("Preparing for ans..."), end="", flush=True)
             print(colors.get_color("darkgrey")+"Start streaming..."
                   .ljust(len("Preparing for ans..."))+colors.reset, flush=True)
@@ -79,7 +81,7 @@ def setup_request_process():
     # print grey text
     # print(colors.get_color('darkgrey')+"Starting request process... "+colors.reset, end="", flush=True)
     parent_conn, child_conn = multiprocessing.Pipe()
-    child_proc=multiprocessing.Process(target=generator_proc, args=(child_conn, openai.organization, openai.api_key), daemon=True)
+    child_proc=multiprocessing.Process(target=generator_proc, args=(child_conn, openai.organization, openai.api_key, model_name), daemon=True)
     child_proc.start()
     print(colors.get_color('darkgrey')+"A new request process started."+colors.reset, flush=True)
 
@@ -108,7 +110,7 @@ def init_globals(language:str="en"):
 
 def test_api_key() -> bool:
     try:
-        openai.ChatCompletion.create(model="gpt-3.5-turbo",messages=[{"role": "user", "content": "Hello"}])
+        openai.ChatCompletion.create(model=model_name,messages=[{"role": "user", "content": "Hello"}])
         return True
     except Exception as e:
         if "No API key provided" in str(e) or "Incorrect API key provided" in str(e) or \
@@ -248,7 +250,7 @@ def get_question():
 # Chat functions ---------------------------------------------------------------
 
 def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
-    global current_file_path
+    global current_file_path, model_name, chat_mode
     
     if len(msg_arr_whole)==0: # start a new chat
         system_msg="You are a helpful assistant."
@@ -357,7 +359,23 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                         print(f"Saved successfully to {current_file_path}!")
                     except: print("Save failed!")
                 else: print("No file path specified!")
-                continue      
+                continue
+            elif input_text=="-inq": # Question mode without context
+                print("Question mode without context loaded!")
+                chat_mode=False; msg_arr=msg_arr_whole[:1]; continue
+            elif input_text=="-chat": # Chat mode with context loaded
+                print("Chat mode with context loaded!")
+                chat_mode=True; msg_arr=msg_arr_whole[:]; continue
+            elif input_text=="-model":
+                print(f"Current model: {model_name}"); continue
+            elif input_text.startswith("-model ") and len(input_text.strip().split())==2:
+                tmp=input_text.strip().split()[-1]
+                if tmp in ['gpt-3.5-turbo', 'gpt-4'] and model_name!=tmp:
+                    model_name=tmp
+                    terminate_request_process(restart=True)
+                    print(f"Model changed to {model_name}!")
+                else: print("Invalid model name! Use gpt-3.5-turbo or gpt-4!")
+                continue
             elif input_text=="h": 
                 print(
                       translate("h\t:list of commands\n"+
@@ -375,10 +393,15 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                       "-rl\t:reload all chat messages to the context\n"+
                       "-s <fp>\t:save the chat to a file path <fp> relative to the current working dir\n"
                       "-sys\t:edit the system message\n"+
-                      "-cache: show the cache path\n")
+                      "-cache: show the cache path\n"+
+                      "-inq\t:question mode without context\n"+
+                      "-chat\t:chat mode with context loaded\n"+
+                      "-model\t:show the current model\n"+
+                      "-model <mn>\t:change the model to <mn>\n")
                 )
                 continue
             
+            if not chat_mode: msg_arr=msg_arr_whole[:1]
             msg_arr.append({"role": "user", "content": input_text})
             msg_arr_whole.append({"role": "user", "content": input_text})
         
@@ -392,7 +415,9 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                     msg_arr.pop(1)
                     if len(msg_arr)>=2: msg_arr.pop(1)
                 else: msg_arr=msg_arr_left
-            elif ("Rate limit reached for" in str(e)): time.sleep(1)
+            elif ("Rate limit reached for" in str(e)):
+                print(colors.get_color("darkgrey")+translate('Rate limit reached. Waiting for 1 second...')+colors.reset)
+                time.sleep(1)
             elif ("Incorrect API key provided" in str(e)):
                 print(translate("Authentication failed. Please provide a valid API key."))
                 setup(reset=True, iters=1)
