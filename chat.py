@@ -17,7 +17,6 @@ if __name__ == "__main__":
     setup_theme()
     init_globals(args.lang)
     setup()
-    setup_request_process()
     if args.nogui: disable_gui()
     if args.resume:
         try:
@@ -37,5 +36,4 @@ if __name__ == "__main__":
         print(translate_util("Unable to save chat log.",lang=args.lang), flush=True)
     except: pass
     finally:
-        terminate_request_process()
         sys.exit(0)

@@ -1,5 +1,6 @@
 import multiprocessing, threading
-import openai, os, time, random, re, sys, colorama, tempfile
+import openai, os, time, random, re, sys, colorama
+from openai import AzureOpenAI
 try: 
     import tkinter as tk
     from tkinter import filedialog
@@ -14,32 +15,37 @@ from pygments.formatters import Terminal256Formatter
 from colors import colors
 from translator import translate_util
 from key_bindings import get_key_bindings
+from os.path import expanduser
+
+def getDataFolder():
+    return expanduser("~")
 
 # Global variables ---------------------------------------------------------------
 
 is_insert_mode, response_completed, start_time, lang, translate, tmp_dir, current_file_path, usegui = None, None, None, None, None, None, None, None
 parent_conn, child_proc=None, None
 msg_arr_cache={}
-model_name="gpt-3.5-turbo"
+model_name="gpt-35-turbo"
+api_key, api_version, azure_endpoint = None, None, None
 chat_mode=True
 
 # Setup functions ---------------------------------------------------------------
 
 def setup(reset=False, iters=5):
+    global api_key, api_version, azure_endpoint
     if os.path.exists(tmp_dir+"auth") and not (reset and iters>0):
         try:
             with open(tmp_dir+"auth", "r") as f:
-                org,key=f.read().split("\n")
-                openai.organization=org
-                openai.api_key=key
+                api_key, api_version, azure_endpoint = f.read().split("\n")
                 return
         except: pass
             
     history = FileHistory(tmp_dir+".auth") # authentification history
-    openai.organization=prompt(translate("Enter your organization: "),history=history, key_bindings=get_key_bindings())
-    openai.api_key=prompt(translate("Enter your OpenAI API key: "),history=history, key_bindings=get_key_bindings())
+    api_key=prompt(translate("Enter your API key: "),history=history, key_bindings=get_key_bindings())
+    api_version=prompt(translate("Enter your API version: "),history=history, key_bindings=get_key_bindings())
+    azure_endpoint=prompt(translate("Enter your Azure endpoint: "),history=history, key_bindings=get_key_bindings())
     if test_api_key():
-        record_auth(openai.organization, openai.api_key) 
+        record_auth(api_key, api_version, azure_endpoint) 
         return
     else:
         print(translate("Authentication failed. Please try again."))
@@ -47,54 +53,6 @@ def setup(reset=False, iters=5):
 
 def setup_theme():
     colorama.init()
-
-def generator_proc(conn, org: str, api_key: str, model_name: str):
-    try:
-        openai.organization=org
-        openai.api_key=api_key
-        while(True):
-            ques=conn.recv()
-            # print("Question Received! ", end="", flush=True)
-            # print("Processing...", end="", flush=True)
-            print(colors.get_color("darkgrey")+"Preparing for ans..."+colors.reset, end="", flush=True)
-            response = openai.ChatCompletion.create(model=model_name, messages=ques, stream=True)
-            print("\b"*len("Preparing for ans..."), end="", flush=True)
-            print(colors.get_color("darkgrey")+"Start streaming..."
-                  .ljust(len("Preparing for ans..."))+colors.reset, flush=True)
-            for r in response:
-                delta=r.choices[0].delta
-                if delta: conn.send(delta)
-            conn.send("done")
-    except Exception as e:
-        # print("In generator_proc Exception:"+str(e), flush=True)
-        try: conn.send(e)
-        except: pass
-        # print("In generator_proc Exception: sent", flush=True)
-    except: pass
-    finally:
-        # print("Closing connection...", flush=True)
-        conn.close()
-        # print("Connection closed.", flush=True)
-
-def setup_request_process():
-    global parent_conn, child_proc
-    # print grey text
-    # print(colors.get_color('darkgrey')+"Starting request process... "+colors.reset, end="", flush=True)
-    parent_conn, child_conn = multiprocessing.Pipe()
-    child_proc=multiprocessing.Process(target=generator_proc, args=(child_conn, openai.organization, openai.api_key, model_name), daemon=True)
-    child_proc.start()
-    print(colors.get_color('darkgrey')+"A new request process started."+colors.reset, flush=True)
-
-def terminate_request_process(restart=False):
-    global parent_conn, child_proc
-    # print(colors.get_color('darkgrey')+"\nTerminating request process... "+colors.reset, end="", flush=True)
-    if child_proc!=None and child_proc.is_alive():
-        parent_conn.close()
-        child_proc.terminate()
-        print(colors.get_color('darkgrey')+"\nRequest process terminated."+colors.reset, flush=True)
-    parent_conn, child_proc=None, None
-    if restart:
-        setup_request_process()
     
 def init_globals(language:str="en"):
     global is_insert_mode, response_completed, start_time, lang, translate, tmp_dir, usegui
@@ -103,14 +61,26 @@ def init_globals(language:str="en"):
     start_time=None
     lang=language
     translate=lambda msg: translate_util(msg, lang=lang)
-    tmp_dir = tempfile.gettempdir()
+    tmp_dir = getDataFolder()
     usegui=True
     if not os.path.exists(tmp_dir+"/chatgpt-cache"): os.mkdir(tmp_dir+"/chatgpt-cache")
     tmp_dir=tmp_dir+"/chatgpt-cache/"
 
 def test_api_key() -> bool:
     try:
-        openai.ChatCompletion.create(model=model_name,messages=[{"role": "user", "content": "Hello"}])
+        client=AzureOpenAI(
+            api_key=api_key,
+            api_version=api_version,
+            azure_endpoint=azure_endpoint
+        )
+        response=client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role":"system", "content":"You are a helpful assistant."},
+                {"role":"user", "content":"Say hi"},
+            ],
+        )
+        assert(len(response.choices[0].message.content)>0)
         return True
     except Exception as e:
         if "No API key provided" in str(e) or "Incorrect API key provided" in str(e) or \
@@ -197,34 +167,17 @@ def print_msg_arr(msg_arr: list, max_lines=-1, max_len_of_line=-1, enum=False):
 # ChatGPT interface ---------------------------------------------------------------
 
 def ask_question(ques:list):
-    global child_proc, parent_conn
-    ans, ex = "", None
-    try:
-        if child_proc is None or not child_proc.is_alive(): setup_request_process()
-        parent_conn.send(ques)
-        while True:
-            delta = parent_conn.recv()
-            is_token=(type(delta) is openai.openai_object.OpenAIObject)
-            if is_token and "role" in delta:
-                print(colors.fg.blue+str(delta["role"])+": "+colors.reset+"", end="", flush=True)
-            elif is_token and "content" in delta:
-                ans+=delta["content"]
-                print(delta["content"], end="", flush=True)
-            elif is_token: continue
-            elif delta=="done": break
-            else:
-                print(colors.get_color('darkgrey')+"\nException raised in request process!"+colors.reset,flush=True)
-                terminate_request_process(restart=True)
-                raise delta
-        print()        
-    except Exception as e: ex=e
-    except KeyboardInterrupt as e:
-        terminate_request_process(restart=True)
-        ex=e
-    finally:
-        if len(ans.strip())!=0: return ans
-        elif ex is not None: raise ex
-        else: raise Exception("TryAgain")
+    client=AzureOpenAI(
+        api_key=api_key,
+        api_version=api_version,
+        azure_endpoint=azure_endpoint
+    )
+    response=client.chat.completions.create(
+        model=model_name,
+        messages=ques,
+    )
+    response_msg=response.choices[0].message.content
+    return response_msg
 
 def get_question():
     custom_style = Style.from_dict({
@@ -239,11 +192,9 @@ def get_question():
                 history=history, key_bindings=get_key_bindings(), auto_suggest=AutoSuggestFromHistory())
         except KeyboardInterrupt as e:
             print(translate("Exiting..."))
-            terminate_request_process()
             sys.exit(0)
         except EOFError as e:
             print(translate("Exiting..."))
-            terminate_request_process()
             sys.exit(0)
     return input_text
 
@@ -329,7 +280,6 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 print("  ".join(paths)); continue
             elif input_text=="q!":
                 print("Exiting...")
-                terminate_request_process()
                 sys.exit(0)
             elif input_text.startswith("-s") and len(input_text.split())==2:
                 save_path=get_recent_save_path()
@@ -370,14 +320,11 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                 print(f"Current model: {model_name}"); continue
             elif input_text.startswith("-model ") and len(input_text.strip().split())==2:
                 tmp=input_text.strip().split()[-1].strip()
-                if tmp.lower() in ['3', '3.5', 'chat', 'chatgpt']: 
-                    tmp='gpt-3.5-turbo'
-                elif tmp=='4': tmp='gpt-4'
-                if tmp in ['gpt-3.5-turbo', 'gpt-4'] and model_name!=tmp:
+                if tmp not in ["gpt-35-turbo", "gpt-35-turbo-16k", "gpt-4", "gpt-4-32k"]: 
+                    print("Invalid model name! Available options: gpt-35-turbo, gpt-35-turbo-16k, gpt-4, gpt-4-32k.")
+                else:
                     model_name=tmp
-                    terminate_request_process(restart=True)
                     print(f"Model changed to {model_name}!")
-                elif tmp not in ['gpt-3.5-turbo', 'gpt-4']: print("Invalid model name! Use gpt-3.5-turbo or gpt-4!")
                 continue
             elif input_text=="h": 
                 print(
@@ -408,7 +355,9 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
             msg_arr.append({"role": "user", "content": input_text})
             msg_arr_whole.append({"role": "user", "content": input_text})
         
-        try: response=ask_question(msg_arr)
+        try: 
+            response=ask_question(msg_arr)
+            print(response)
         except Exception as e:
             if ("reduce the length of the messages" in str(e)):
                 print(colors.get_color("darkgrey")+translate('Max length of messages reached. Remove the earliest dialog.')+colors.reset)
@@ -532,14 +481,14 @@ def read_msg_arr():
     current_file_path=file_path
     return my_list
    
-def record_auth(org:str, api_key:str):
+def record_auth(api_key:str, api_version:str, azure_endpoint:str):
     with open(tmp_dir+"auth", "w") as f:
-        f.write(f"{org}\n{api_key}")
+        f.write(f"{api_key}\n{api_version}\n{azure_endpoint}")
     print(translate("Authentication successful. Your credentials are saved to")+f" {os.path.normpath(tmp_dir+'auth')}.")
     print(translate("You can now run the program without entering your credentials again."))
 
 def print_auth():
-    try: f=open(tempfile.gettempdir()+"/chatgpt-cache/"+"auth","r"); print(f.read()); f.close()
+    try: f=open(getDataFolder()+"/chatgpt-cache/"+"auth","r"); print(f.read()); f.close()
     except: print("No authentication record found.")
     
 def get_programming_languages():
