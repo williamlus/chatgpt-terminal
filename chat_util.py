@@ -42,7 +42,7 @@ def setup(reset=False, iters=5):
             
     history = FileHistory(tmp_dir+".auth") # authentification history
     api_key=prompt(translate("Enter your API key: "),history=history, key_bindings=get_key_bindings())
-    api_version=prompt(translate("Enter your API version: "),history=history, key_bindings=get_key_bindings())
+    api_version=prompt(translate("Select your API version (2023-05-15, 2023-06-01-preview, 2023-07-01-preview, 2023-12-01-preview): "),history=history, key_bindings=get_key_bindings())
     azure_endpoint=prompt(translate("Enter your Azure endpoint: "),history=history, key_bindings=get_key_bindings())
     if test_api_key():
         record_auth(api_key, api_version, azure_endpoint) 
