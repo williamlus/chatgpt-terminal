@@ -38,7 +38,11 @@ def translate_util(msg:str, lang:str="cn"):
             "-rl\t:reload all chat messages to the context\n"+\
             "-s <fp>\t:save the chat to a file path <fp> relative to the current working dir\n"\
             "-sys\t:edit the system message\n"+\
-            "-cache: show the cache path\n":
+            "-cache: show the cache path\n"+\
+            "-inq\t:question mode without context\n"+\
+            "-chat\t:chat mode with context loaded\n"+\
+            "-model\t:show the current model\n"+\
+            "-model <mn>\t:change the model to <mn> (Available options: gpt-35-turbo, gpt-35-turbo-16k, gpt-4, gpt-4-32k)\n":
             "h\t:命令列表\n"+\
             "q\t:退出并保存\n"+\
             "q!\t:退出不保存 (Ctrl D)\n"+\
@@ -54,7 +58,11 @@ def translate_util(msg:str, lang:str="cn"):
             "-rl\t:将所有聊天消息重新加载到上下文中\n"+\
             "-s <fp>\t:将聊天保存到相对于当前工作目录的文件路径 <fp>\n"\
             "-sys\t:编辑系统消息\n"+\
-            "-cache\t: 显示缓存路径\n",
+            "-cache\t: 显示缓存路径\n"+\
+            "-inq\t:无上下文的问题模式\n"+\
+            "-chat\t:有上下文的聊天模式\n"+\
+            "-model\t:显示当前模型\n"+\
+            "-model <mn>\t:更改模型为<mn> (可选项: gpt-35-turbo, gpt-35-turbo-16k, gpt-4, gpt-4-32k)\n"
         
     }
     return msg_map.get(msg, msg)

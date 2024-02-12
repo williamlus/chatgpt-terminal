@@ -347,7 +347,7 @@ def start_chat(customize_system: bool, msg_arr=[], msg_arr_whole=[]):
                       "-inq\t:question mode without context\n"+
                       "-chat\t:chat mode with context loaded\n"+
                       "-model\t:show the current model\n"+
-                      "-model <mn>\t:change the model to <mn>\n")
+                      "-model <mn>\t:change the model to <mn> (Available options: gpt-35-turbo, gpt-35-turbo-16k, gpt-4, gpt-4-32k)\n")
                 )
                 continue
             
